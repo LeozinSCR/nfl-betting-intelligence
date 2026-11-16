@@ -49,7 +49,9 @@ Crawlora: bash+curl, chave `CRAWLORA_API_KEY` obrigatória, host fixo
 api.crawlora.net, GET e allowlist, arquivo temporário de autenticação modo 600,
 sem chave na linha de processo. Helpers rejeitam método/body/path traversal;
 não foram adotadas rotas de conta, execução, carteira ou pagamento. API SaaS
-continua sujeita a termos e créditos próprios, distintos da licença MIT.
+continua sujeita a termos e créditos próprios, distintos da licença MIT. A URL
+`https://crawlora.net/terms`, encontrada no rodapé, respondeu HTTP403; conteúdo
+não pôde ser revisado. Isso reforça a decisão de não adotar integração autenticada.
 
 O probe público ESPN retornou HTTP 200 antes da conclusão da revisão de termos.
 A página de [termos Disney](https://disneytermsofuse.com/english/) consultada
@@ -202,9 +204,30 @@ preserva o recibo após upload. Falhas de instalação/teste/ingestão/build/upl
 aprovação. Links/status são sanitizados, sem inserir exceptions/segredos no
 Markdown. A publicação padrão **não exige ação administrativa adicional**.
 
-Ensaio remoto da alteração será registrado em `workflow_validation.json` antes
-de concluir o PR. Agenda só roda na branch padrão após integração; nenhuma
-branch foi integrada. Para reativar PRs automáticos no futuro, administrador
+Ensaio remoto **concluído com sucesso** no commit `6e87ee9dd5878a37155ee535268378d77bdf2cda`:
+[run 43977025475](https://github.com/LeozinSCR/nfl-betting-intelligence/actions/runs/43977025475).
+Logs confirmam Contents: read / Metadata: read, 82 testes, seis fontes,
+construção, dois uploads, resumo e recibo com sucesso. Banco permanece PARTIAL,
+2.619 pendências; as 14 contagens coincidem com Task 3. [CI offline
+43977025416](https://github.com/LeozinSCR/nfl-betting-intelligence/actions/runs/43977025416)
+também passou. Nenhuma tentativa de criar PR ocorreu no workflow.
+
+Baixados o [bundle 14281820187](https://github.com/LeozinSCR/nfl-betting-intelligence/actions/runs/43977025475/artifacts/14281820187)
+(22.829.479 bytes) e o recibo 14279574991: SHA-256 dos ZIPs conferidos com a API,
+28 hashes declarados de fontes/corpos/Parquets/audit/DB verificados, catálogo
+aberto em outro caminho. Receipt status=OK, PR_OUTCOME=NOT_REQUESTED,
+durable_archive=NOT_CONFIGURED. Artefatos expiram em 14/02/2027. Evidência
+completa em `reports/task4_2026-11-16/workflow_validation.json`.
+
+Cinco fontes normalizadas mantêm hash da Task 3; schedules mudou em campos
+raw de moneyline/spread odds de três jogos futuros W11. Diferenças preservadas
+na evidência; não são cotações utilizáveis sem origem/bookmaker/validade e não
+mudaram o Master ou a cobertura/contagens. Não confundir revisão externa com
+alteração silenciosa de histórico. O gatilho temporário de push foi removido
+após observar o resultado; ficam schedule/workflow_dispatch. Os guards de
+payload/GSIS e symlinks receberam hardening posterior, com a mesma suíte
+regressiva; a evidência atribui o ensaio ao commit efetivamente executado.
+Agenda só roda na branch padrão após integração; nenhuma branch foi integrada. Para reativar PRs automáticos no futuro, administrador
 precisaria autorizar a política de criação de PRs e revisar permissões do token;
 isso é opcional, não requisito da alternativa implementada.
 

@@ -1,8 +1,5 @@
 name: NFL weekly research refresh
 on:
-  push:
-    branches: [codex/agent-skills-infrastructure-2026-11-16]
-    paths: [.github/workflows/weekly_refresh.yml]
   workflow_dispatch:
   schedule:
     - cron: '0 13 * * 2' # Tuesday 10:00 America/Sao_Paulo

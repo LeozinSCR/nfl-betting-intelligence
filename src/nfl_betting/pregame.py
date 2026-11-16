@@ -2,6 +2,8 @@
 
 import hashlib
 import json
+import re
+from collections.abc import Mapping
 from urllib.parse import urlsplit
 
 from .research import aware
@@ -25,6 +27,8 @@ def validate_evidence(item, *, cutoff, kickoff):
     A valid envelope is not authentication of the supplier or an ACTIVE decision.
     Published time may be unknown; collection time must never be backdated.
     """
+    if not isinstance(item, Mapping) or not isinstance(item.get("payload"), Mapping):
+        raise ValueError("Evidence and payload must be mappings")  # noqa: TRY004 -- public validation contract uses ValueError
     cutoff, kickoff = aware(cutoff), aware(kickoff)
     if cutoff >= kickoff:
         raise ValueError("Pregame cutoff must precede kickoff")
@@ -61,7 +65,7 @@ def validate_evidence(item, *, cutoff, kickoff):
     }
     if player_evidence and (
         not isinstance(item.get("player_id"), str)
-        or not item["player_id"].startswith("00-")
+        or not re.fullmatch(r"00-\d{7}", item["player_id"])
     ):
         raise ValueError("GSIS identity required; names are not identifiers")
     if item["kind"] == "quote":

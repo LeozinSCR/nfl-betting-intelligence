@@ -166,7 +166,7 @@ class PregameTests(unittest.TestCase):
             "provider": "SYNTHETIC_TEST_ONLY",
             "source_url": "https://example.org/report",
             "game_id": "TEST",
-            "player_id": "00-SYNTHETIC",
+            "player_id": "00-0000001",
             "snapshot_id": "test",
             "payload": payload,
             "observed_at": (self.cutoff - timedelta(minutes=1)).isoformat(),
@@ -230,17 +230,29 @@ class PregameTests(unittest.TestCase):
             unavailable("X", "place_bet")
 
     def test_existing_quote_validation_cannot_be_bypassed(self):
+        from nfl_betting.rules import validate_quote
+
         item = deepcopy(self.item)
         item["kind"] = "quote"
         item["payload"] = {
             "game_id": "TEST",
-            "player_id": "00-SYNTHETIC",
+            "player_id": "00-0000001",
             "observed_at": item["observed_at"],
             "valid_until": item["valid_until"],
-            "odds": float("inf"),
+            "decimal_odds": 1.9,
         }
-        with self.assertRaises(ValueError):
-            self.validate(item)
+        item["payload_sha256"] = hashlib.sha256(
+            json.dumps(item["payload"], sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        with patch(
+            "nfl_betting.pregame.validate_quote", wraps=validate_quote
+        ) as delegate:
+            with self.assertRaisesRegex(ValueError, "Existing quote contract"):
+                self.validate(item)
+            delegate.assert_called_once()
+        for bad in ([], None, {"payload": None}):
+            with self.assertRaises(ValueError):
+                validate_evidence(bad, cutoff=self.cutoff, kickoff=self.kickoff)
 
 
 class PublicationTests(unittest.TestCase):

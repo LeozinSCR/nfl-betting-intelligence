@@ -119,5 +119,12 @@
     "sha256": "dcea2ff2a8f921f5d117be46208688aed7efcf2e7c750ca39eeb7cfc6d9c2609",
     "last_modified": null,
     "raw_path": "/workspace/scratch/task4-espn_terms.body"
+  },
+  "crawlora_terms": {
+    "url": "https://crawlora.net/terms",
+    "status": 403,
+    "observed_at": "2026-11-16T23:14:39.054552+00:00",
+    "content_reviewed": false,
+    "limitation": "Observed HTTP 403; no access bypass, no authenticated integration adopted"
   }
 }

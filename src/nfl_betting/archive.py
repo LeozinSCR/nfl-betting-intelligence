@@ -31,6 +31,8 @@ def verify(folder, expected_catalog):
             "Catalog digest mismatch; obtain digest from independent run evidence"
         )
     files = json.loads(catalog.read_text())["files"]
+    if any(p.is_symlink() for p in folder.rglob("*")):
+        raise ValueError("Symlinks rejected")
     actual = {
         p.relative_to(folder).as_posix() for p in folder.rglob("*") if p.is_file()
     }

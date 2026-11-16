@@ -1,0 +1,305 @@
+{
+  "run_url": "https://github.com/LeozinSCR/nfl-betting-intelligence/actions/runs/43977025475",
+  "commit": "6e87ee9dd5878a37155ee535268378d77bdf2cda",
+  "conclusion": "success",
+  "offline_run_url": "https://github.com/LeozinSCR/nfl-betting-intelligence/actions/runs/43977025416",
+  "offline_conclusion": "success",
+  "permission": "contents: read; metadata: read; no PR permission",
+  "jobs": [
+    {
+      "id": 133683515343,
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-16T23:11:10Z",
+          "completed_at": "2026-11-16T23:11:10Z"
+        },
+        {
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-16T23:11:10Z",
+          "completed_at": "2026-11-16T23:11:11Z"
+        },
+        {
+          "name": "Run actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-16T23:11:11Z",
+          "completed_at": "2026-11-16T23:11:13Z"
+        },
+        {
+          "name": "Install locked dependencies and package",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-16T23:11:13Z",
+          "completed_at": "2026-11-16T23:11:18Z"
+        },
+        {
+          "name": "Offline tests and historical integrity",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-16T23:11:18Z",
+          "completed_at": "2026-11-16T23:11:25Z"
+        },
+        {
+          "name": "Collect independent 2026 snapshot",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-16T23:11:25Z",
+          "completed_at": "2026-11-16T23:11:27Z"
+        },
+        {
+          "name": "Build canonical database and reconciliation audit",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-16T23:11:27Z",
+          "completed_at": "2026-11-16T23:11:29Z"
+        },
+        {
+          "name": "Record outcomes even when no manifest exists",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-16T23:11:29Z",
+          "completed_at": "2026-11-16T23:11:29Z"
+        },
+        {
+          "name": "Preserve raw snapshot, manifest, diagnostics and logs",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-16T23:11:29Z",
+          "completed_at": "2026-11-16T23:11:31Z"
+        },
+        {
+          "name": "Publish safe diagnostic summary and receipt",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-11-16T23:11:31Z",
+          "completed_at": "2026-11-16T23:11:31Z"
+        },
+        {
+          "name": "Preserve workflow publication receipt",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-11-16T23:11:31Z",
+          "completed_at": "2026-11-16T23:11:32Z"
+        },
+        {
+          "name": "Keep failed ingestion visible in Actions",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-16T23:11:32Z",
+          "completed_at": "2026-11-16T23:11:32Z"
+        },
+        {
+          "name": "Post Run actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-11-16T23:11:32Z",
+          "completed_at": "2026-11-16T23:11:32Z"
+        },
+        {
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-11-16T23:11:32Z",
+          "completed_at": "2026-11-16T23:11:32Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-11-16T23:11:32Z",
+          "completed_at": "2026-11-16T23:11:32Z"
+        }
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 14281820187,
+      "name": "nfl-refresh-43977025475-1",
+      "size_in_bytes": 22829479,
+      "digest": "sha256:d811b7aae20fbc5d3abb6086dc8822ceda51be6e858f71a8520c2baf1549df06",
+      "expires_at": "2027-02-14T23:11:07Z"
+    },
+    {
+      "id": 14279574991,
+      "name": "nfl-refresh-receipt-43977025475-1",
+      "size_in_bytes": 485,
+      "digest": "sha256:99f6b4fe75fc891f09005509b163fb0e4a52bd2217bed48fd0c8b57aee77613f",
+      "expires_at": "2027-02-14T23:11:07Z"
+    }
+  ],
+  "receipt": {
+    "publication_mode": "ARTIFACT_AND_STEP_SUMMARY",
+    "PR_OUTCOME": "NOT_REQUESTED",
+    "permission_requirement": "contents: read",
+    "ARTIFACT_URL": "https://github.com/LeozinSCR/nfl-betting-intelligence/actions/runs/43977025475/artifacts/14281820187",
+    "outcomes": {
+      "INSTALL_OUTCOME": "success",
+      "TESTS_OUTCOME": "success",
+      "INGEST_OUTCOME": "success",
+      "CANONICAL_OUTCOME": "success",
+      "ARTIFACT_OUTCOME": "success"
+    },
+    "status": "OK",
+    "decision": "NO_BET",
+    "retention_days": 90,
+    "durable_archive": "NOT_CONFIGURED"
+  },
+  "downloaded_zip_digests_verified": true,
+  "declared_hash_checks": 28,
+  "relocated_database_opened": true,
+  "raw_sources": {
+    "schedules": {
+      "rows": 272,
+      "sha256": "4aa193c682445651b0c1c042a42bd4f715750fa4a17d1b6f01d5a674aaec5e9f"
+    },
+    "player_stats": {
+      "rows": 10376,
+      "sha256": "cd8297e46678def5fc7b908d226ffb5862ba95fb1b31519cf0fb281024b1ab61"
+    },
+    "pbp": {
+      "rows": 26071,
+      "sha256": "ff39d7fb90292df6ae9453e8deab0c5d406b230327b4aeea45588c93564c8ace"
+    },
+    "snap_counts": {
+      "rows": 13913,
+      "sha256": "15bcba96f0f016fe0b2a382aef766594d79c85b8e74a55d2943f1e1830956f50"
+    },
+    "injuries": {
+      "rows": 3168,
+      "sha256": "3cabf187f4c4ab3171eb1dedb6508f513dc294224daaf2d4132c058556022c6f"
+    },
+    "rosters_weekly": {
+      "rows": 24565,
+      "sha256": "b37d57cbabf631d962725bfdf173cdc078746c728b1819ee55688a0a3a41f7ce"
+    }
+  },
+  "source_hash_matches_task3": {
+    "schedules": false,
+    "player_stats": true,
+    "pbp": true,
+    "snap_counts": true,
+    "injuries": true,
+    "rosters_weekly": true
+  },
+  "canonical_counts": {
+    "games": 272,
+    "teams": 32,
+    "players": 3458,
+    "player_crosswalk": 24565,
+    "player_week": 27174,
+    "team_week": 298,
+    "offensive_opportunities": 17445,
+    "snap_counts": 13913,
+    "injuries": 3168,
+    "defensive_matchups": 899,
+    "ingestion_manifest": 6,
+    "reconciliation_audit": 27823,
+    "coverage_audit": 544,
+    "source_coverage": 55931
+  },
+  "pending_identity_audit_rows": 2619,
+  "canonical_status": "PARTIAL",
+  "snapshot_id": "20261116T231125.738464Z-775d6cca2aad41569d567f7aebb8b497",
+  "log_excerpts": [
+    "2026-11-16T23:11:10.1296437Z ##[group]GITHUB_TOKEN Permissions",
+    "2026-11-16T23:11:10.1297717Z Contents: read",
+    "2026-11-16T23:11:10.1298070Z Metadata: read",
+    "2026-11-16T23:11:25.5988701Z Ran 82 tests in 6.467s",
+    "2026-11-16T23:11:31.4984320Z {\"publication_mode\": \"ARTIFACT_AND_STEP_SUMMARY\", \"PR_OUTCOME\": \"NOT_REQUESTED\", \"permission_requirement\": \"contents: read\", \"ARTIFACT_URL\": \"https://github.com/LeozinSCR/nfl-betting-intelligence/actions/runs/43977025475/artifacts/14281820187\", \"outcomes\": {\"INSTALL_OUTCOME\": \"success\", \"TESTS_OUTCOME\": \"success\", \"INGEST_OUTCOME\": \"success\", \"CANONICAL_OUTCOME\": \"success\", \"ARTIFACT_OUTCOME\": \"success\"}, \"status\": \"OK\", \"decision\": \"NO_BET\", \"retention_days\": 90, \"durable_archive\": \"NOT_CONFIGURED\"}"
+  ],
+  "no_history_update": true,
+  "no_bets": true,
+  "schedule_revision_comparison": [
+    {
+      "column": "away_moneyline",
+      "changed_rows": 2,
+      "examples": [
+        {
+          "game_id": "2026_11_TB_DET",
+          "before": 225,
+          "after": 230
+        },
+        {
+          "game_id": "2026_11_TEN_DAL",
+          "before": 360,
+          "after": 330
+        }
+      ]
+    },
+    {
+      "column": "home_moneyline",
+      "changed_rows": 2,
+      "examples": [
+        {
+          "game_id": "2026_11_TB_DET",
+          "before": -278,
+          "after": -285
+        },
+        {
+          "game_id": "2026_11_TEN_DAL",
+          "before": -470,
+          "after": -425
+        }
+      ]
+    },
+    {
+      "column": "away_spread_odds",
+      "changed_rows": 1,
+      "examples": [
+        {
+          "game_id": "2026_11_JAX_NYG",
+          "before": -108,
+          "after": -110
+        }
+      ]
+    },
+    {
+      "column": "home_spread_odds",
+      "changed_rows": 1,
+      "examples": [
+        {
+          "game_id": "2026_11_JAX_NYG",
+          "before": -112,
+          "after": -110
+        }
+      ]
+    }
+  ],
+  "code_fingerprint_matches_implementation_commit": {
+    "pyproject.toml": true,
+    "requirements.lock": true,
+    "src/nfl_betting/__init__.py": true,
+    "src/nfl_betting/archive.py": true,
+    "src/nfl_betting/canonical.py": true,
+    "src/nfl_betting/canonical.sql": true,
+    "src/nfl_betting/ingest_nflverse.py": true,
+    "src/nfl_betting/pregame.py": true,
+    "src/nfl_betting/provenance.py": true,
+    "src/nfl_betting/research.py": true,
+    "src/nfl_betting/rules.py": true
+  },
+  "code_comparison_reference_commit": "6e87ee9dd5878a37155ee535268378d77bdf2cda",
+  "final_scope_note": "Controlled weekly run at recorded implementation commit; push trigger removed subsequently, envelope type/GSIS and archive symlink guards hardened with offline regression suite."
+}
