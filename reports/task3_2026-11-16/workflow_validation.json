@@ -1,0 +1,62 @@
+{
+  "run_id": 43971993500,
+  "head_sha": "13f648651da7dda523a1304ba9214b1ec2b32bce",
+  "run_url": "https://github.com/LeozinSCR/nfl-betting-intelligence/actions/runs/43971993500",
+  "conclusion": "failure",
+  "failure_stage": "automatic_pull_request_policy",
+  "error": "GitHub Actions is not permitted to create or approve pull requests.",
+  "receipt": {
+    "ARTIFACT_URL": "https://github.com/LeozinSCR/nfl-betting-intelligence/actions/runs/43971993500/artifacts/14280045605",
+    "ARTIFACT_OUTCOME": "success",
+    "PR_URL": "",
+    "PR_OUTCOME": "failure",
+    "CANONICAL_OUTCOME": "success"
+  },
+  "artifact_id": 14280045605,
+  "artifact_zip_sha256": "999b56b690ac446f342aa07d38c4705a6acfc59e0fa1bc3ba50a2329f7cd5729",
+  "receipt_artifact_id": 14279990619,
+  "receipt_zip_sha256": "3ec8246d44aad897cefd75cbc9d952a738ebc5dc22164ea3df7f11393f47d92f",
+  "artifact_expires_at": "2027-02-14T22:38:26Z",
+  "downloaded_artifact_hashes_verified": true,
+  "database_read_after_relocation": true,
+  "canonical_status": "PARTIAL",
+  "pending_audit_rows": 2619,
+  "table_counts": {
+    "games": 272,
+    "teams": 32,
+    "players": 3458,
+    "player_crosswalk": 24565,
+    "player_week": 27174,
+    "team_week": 298,
+    "offensive_opportunities": 17445,
+    "snap_counts": 13913,
+    "injuries": 3168,
+    "defensive_matchups": 899,
+    "ingestion_manifest": 6,
+    "reconciliation_audit": 27823,
+    "coverage_audit": 544,
+    "source_coverage": 55931
+  },
+  "table_counts_match_local_controlled_run": true,
+  "remote_source_snapshot_id": "20261116T223853.798034Z-c42926123911446fbeb78d05c1635302",
+  "remote_python": "3.12.16 (main, Oct 26 2026, 02:48:44) [GCC 15.2.0]",
+  "remote_versions": {
+    "nflreadpy": "0.1.5",
+    "polars": "2.1.0",
+    "pyarrow": "26.0.1",
+    "duckdb": "1.4.3"
+  },
+  "source_manifest_sha256": "d261e4a722f1d898e3c8f14e38e42ac226c5657f29a2711f7c2d887171e3a5b6",
+  "remote_build_manifest_sha256": "2c95c6ed93ed13fc5efa0f9fe1bcf0b6a806bc258b0dc9939f2e00e0d0eb0905",
+  "code_fingerprints_match_local": true,
+  "review_branch_created_by_workflow": "automation/nflverse-weekly",
+  "automatic_pr_created": false,
+  "source_normalized_hashes_match_local": {
+    "schedules": true,
+    "player_stats": true,
+    "pbp": true,
+    "snap_counts": true,
+    "injuries": true,
+    "rosters_weekly": true
+  }
+}

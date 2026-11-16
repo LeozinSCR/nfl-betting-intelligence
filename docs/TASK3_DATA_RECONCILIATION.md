@@ -147,7 +147,27 @@ Também passaram pip check, verificação SHA-256 histórica e actionlint dos wo
 
 O workflow semanal agora tenta o banco mesmo após uma ingestão parcial, conserva manifests/brutos/Parquets/DuckDB/auditoria/logs em artefato de 90 dias, publica recibo da tentativa de upload e criação de PR, e deixa falhas visíveis no job. Somente diagnósticos entram em PR automático; o Master e os CSVs legados não são atualizados.
 
-**Validação remota ainda em andamento nesta versão do relatório:** será conferida pela execução real no GitHub e seus recibos. Uma condição temporária de push apenas nesta branch permite o ensaio controlado; será retirada após registrar a evidência, mantendo schedule e workflow_dispatch. Não se declara permissão de escrita/criação de PR somente pela configuração YAML.
+### Validação real do workflow e permissões
+
+Ensaio remoto no commit `13f648651da7dda523a1304ba9214b1ec2b32bce`: [run 43971993500](https://github.com/LeozinSCR/nfl-betting-intelligence/actions/runs/43971993500). A condição temporária de push foi retirada após o ensaio; ficam apenas schedule e workflow_dispatch, sujeitos à integração à branch padrão. O ensaio não fez merge nem alterou configurações de segurança do repositório.
+
+| Etapa observada | Resultado |
+|---|---|
+| Instalação, pip check e 59 testes | Sucesso |
+| Seis fontes em coleta HTTP real | Sucesso |
+| Banco e auditoria canônicos | Sucesso técnico, estado PARTIAL com 2.619 pendências |
+| Upload de brutos/banco/manifests/logs | Sucesso: artefato 14280045605, 22.814.876 bytes |
+| Upload do recibo de permissões | Sucesso: artefato 14279990619 |
+| Push da branch de diagnóstico | Sucesso: automation/nflverse-weekly |
+| Criação automática de PR | **Bloqueada pela política do GitHub** |
+| Resultado final do job | **failure**, corretamente, sem ocultar a falha de publicação |
+
+Erro efetivo: **“GitHub Actions is not permitted to create or approve pull requests.”** O recibo registra `ARTIFACT_OUTCOME=success`, `CANONICAL_OUTCOME=success`, `PR_OUTCOME=failure` e PR_URL vazia. A configuração `pull-requests: write` no YAML não supera essa política. Para liberar a publicação automática, um administrador deve revisar Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests, conforme as políticas da organização. Essa permissão permanece pendente; o workflow não é declarado plenamente operacional. O PR de código #3 foi aberto separadamente pelo conector autorizado, não pelo bot; nenhum PR automático de diagnóstico foi criado.
+
+Baixei o [bundle real](https://github.com/LeozinSCR/nfl-betting-intelligence/actions/runs/43971993500/artifacts/14280045605) e o [recibo](https://github.com/LeozinSCR/nfl-betting-intelligence/actions/runs/43971993500/artifacts/14279990619), conferi o digest SHA-256 dos ZIPs contra a API, os hashes de cada fonte/corpo HTTP/Parquet, e abri o catálogo baixado em outro caminho. As 14 contagens coincidem com a execução local; os fingerprints dos módulos/SQL/lock também coincidem. O runner usou Python 3.12.16. As comparações de hashes das fontes e os resultados completos estão em `reports/task3_2026-11-16/workflow_validation.json`. Os artefatos expiram em **14/02/2027** segundo a API; arquivar antes disso.
+
+O CI de PR separado [43972105293](https://github.com/LeozinSCR/nfl-betting-intelligence/actions/runs/43972105293) concluiu com sucesso. A falha do ensaio semanal é evidência de uma permissão efetivamente negada, não falha de ingestão ou resultado de modelo. Os testes de falhas/parciais verificam que a mesma rotina preserva diagnósticos sem dado inventado.
+
 
 ## 8. Consulta, armazenamento e limites
 

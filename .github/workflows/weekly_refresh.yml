@@ -1,9 +1,6 @@
 name: NFL weekly research refresh
 on:
   workflow_dispatch:
-  push:
-    branches: [codex/canonical-database-2026-11-16]
-    paths: [.github/workflows/weekly_refresh.yml]
   schedule:
     - cron: '0 13 * * 2' # Tuesday 10:00 America/Sao_Paulo
 permissions:

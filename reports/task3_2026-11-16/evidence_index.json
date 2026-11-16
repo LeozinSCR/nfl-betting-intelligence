@@ -125,5 +125,10 @@
     "historical_participation.csv": "6d049953662c18b841373b8c986707f8218a609def646577a5fe4a43b747081c",
     "ingestion_manifest.json": "713220723b490f528da325a61c3e17a3fc1d6fbc1a448416018df88526a08dc8",
     "unresolved_snap_ids.csv": "89eef3b0eba8e3b7d53ab2ce759fc79db464d6a2ef5cae17f447d3d0b3f40276"
+  },
+  "workflow_validation": {
+    "path": "workflow_validation.json",
+    "sha256": "f48f16348527b537ad6c6016e5b507f0cae9acb0c470fd383b5583479aa73ee3",
+    "note": "Post-export verification of actual GitHub run, artifact download, relocation and permission failure"
   }
 }
