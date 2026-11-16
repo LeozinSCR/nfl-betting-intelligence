@@ -31,3 +31,14 @@ Fonte atualizada não substitui os arquivos congelados W1–W9/W10 parcial nem c
 ## Evidência adicional da Tarefa 3
 
 A coleta real de 16/11/2026 foi repetida de ponta a ponta com captura dos corpos HTTP, origem resolvida, headers disponíveis e hashes. A cobertura segue W1–W9 e 13/14 jogos W10, com 149 resultados. Crosswalk usa GSIS/PFR/Sleeper do roster por semana/equipe; não há consulta nova à API Sleeper nem à Stake. Ver `TASK3_DATA_RECONCILIATION.md` para 89 aliases resolvidos, 325 identidades recuperadas e 2.619 pendências mantidas. Essa evidência de coleta é distinta das sondagens da auditoria inicial descritas acima.
+
+
+## Revisão de skills externas (Task 4)
+
+Machina/Walrus/Crawlora foram inspecionados, sem instalação produtiva ou
+substituição NFLverse. ESPN respondeu à consulta pública W9, mas seu conector
+recorrente não foi adotado após revisão dos termos. Crawlora sem chave retornou
+401; catálogo não comprova props NFL/Anytime TD, timestamps ou custo efetivo de
+uma cotação. Sleeper/Stake permanecem com o estado documentado; nenhum novo
+adapter pré-jogo ou cobertura Stake de player props foi demonstrado. Evidências,
+commits, licenças e limites em `TASK4_AGENT_SKILLS_INTEGRATION.md`.

@@ -1,0 +1,232 @@
+{
+  "machina": {
+    "repository": "https://github.com/machina-sports/sports-skills.git",
+    "commit": "edc22197fb05a00bbf07fe224457fb9466b247c6",
+    "license": "MIT",
+    "license_sha256": "790f3cf841e22f55a73c5d8ce665f30c2962547f3eec417da5798d74447f6450",
+    "skills": [
+      {
+        "name": "nfl-data",
+        "skill_sha256": "cd4e9b336e7c071679e7270e8ad6b742e52657fd05dc4b8ee268fdca0b3fc6cf",
+        "scripts": [
+          {
+            "path": "skills/nfl-data/scripts/validate_params.sh",
+            "sha256": "1d1f5f6f78241a71c37a57175c55079f23750b8e67b038b6820bded804a3851a"
+          }
+        ]
+      },
+      {
+        "name": "betting",
+        "skill_sha256": "ae8edd44fcce0d01e169e0064b20eb2f65acf421a0b7c458c1c63aca84800a76",
+        "scripts": []
+      }
+    ],
+    "runtime_installed": false,
+    "runtime_adopted": false
+  },
+  "walrus": {
+    "repository": "https://github.com/WalrusQuant/sports-analytic-skills.git",
+    "commit": "0f90d2463b7d4c793821cce71fc82d06fcb06a3c",
+    "license": "MIT",
+    "license_sha256": "60d80d231a59bd526c07bd35b5f19663ef7073db8573788f7963fd230c878500",
+    "skills": [
+      {
+        "name": "validation-design",
+        "skill_sha256": "5495b34eaec29822d275d1008d502412aeb085a6f6d0ceccc836ce97c80b000e",
+        "scripts": [
+          {
+            "path": "skills/validation-design/scripts/print_folds.py",
+            "sha256": "337f5d53e78dc50480007219075ee5049a3f868c73836e268b1f0b858e3d76b7",
+            "imports": [
+              "__future__",
+              "argparse",
+              "csv",
+              "math",
+              "pandas",
+              "pathlib",
+              "sys"
+            ]
+          },
+          {
+            "path": "skills/validation-design/scripts/write_charter.py",
+            "sha256": "079981b07cd0efa5dbfbc971bb3a4fc13b8b4e8eb238d8112630bd0dfc62e137",
+            "imports": [
+              "__future__",
+              "argparse",
+              "pathlib"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "feature-rules",
+        "skill_sha256": "74367ebad19ff0ece04de270d5d6ba1f56dcb7c077c7acf8c8ffacd7cabe3f98",
+        "scripts": [
+          {
+            "path": "skills/feature-rules/scripts/build_team_game_features.py",
+            "sha256": "9cad12200ef40efe68b6ef604808fa18716e6fbc45078fb22585d3441635d76e",
+            "imports": [
+              "__future__",
+              "argparse",
+              "json",
+              "numpy",
+              "pandas",
+              "pathlib",
+              "sys"
+            ]
+          },
+          {
+            "path": "skills/feature-rules/scripts/feature_preview.py",
+            "sha256": "f0a5dfb246fe81d63ec7151e5f4805db68b2b50ba0da59f693e5975b5b18745e",
+            "imports": [
+              "__future__",
+              "argparse",
+              "pandas",
+              "pathlib"
+            ]
+          },
+          {
+            "path": "skills/feature-rules/scripts/legality_report.py",
+            "sha256": "f4c8cf4b9ec6635f92b6b275c34ab45171121f6d1a533fe48e8caec609d9ff8a",
+            "imports": [
+              "__future__",
+              "argparse",
+              "json",
+              "pandas",
+              "pathlib"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "leakage-audit",
+        "skill_sha256": "d3062219d5f38ed56bb0b24dbebafaa6244c74ff14cbb2c1f4ffe473f1eddfd5",
+        "scripts": [
+          {
+            "path": "skills/leakage-audit/scripts/audit_pregame_features.py",
+            "sha256": "1663ff9644d90c1d425a11094ff1d48c34dbaefdb3fca0db1c3ead6fd95e367b",
+            "imports": [
+              "__future__",
+              "argparse",
+              "json",
+              "pandas",
+              "pathlib",
+              "sys"
+            ]
+          },
+          {
+            "path": "skills/leakage-audit/scripts/write_audit_stub.py",
+            "sha256": "6106e00537b350a4fa2ad5e0be38df425c8cf4ed50b2c3429926b77ca624efc2",
+            "imports": [
+              "__future__",
+              "argparse",
+              "pathlib"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "calibration-check",
+        "skill_sha256": "14531b56a119ce339547675bf04a9d63ae5ad94849bbdd68f892841fd3775f41",
+        "scripts": [
+          {
+            "path": "skills/calibration-check/scripts/calibration_report.py",
+            "sha256": "f83ea47ff46a99ef32334c055da46a7fad37b6a363d511afa4df43a38bcda7d5",
+            "imports": [
+              "__future__",
+              "argparse",
+              "json",
+              "math",
+              "pandas",
+              "pathlib"
+            ]
+          },
+          {
+            "path": "skills/calibration-check/scripts/segment_calibration.py",
+            "sha256": "158bfb692a02e3f51f9d205b2a5586165719e5f180fbbb1f3b4dbdf773b689ba",
+            "imports": [
+              "__future__",
+              "argparse",
+              "importlib.util",
+              "pathlib"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "statistical-modeling",
+        "skill_sha256": "74fa3ce7397f76312049797ff92981eaa0c08c6a1d997acb83bd702c963b6a19",
+        "scripts": [
+          {
+            "path": "skills/statistical-modeling/scripts/assumption_checks.py",
+            "sha256": "3e269d75320ae15d3aca5e8c8cd9d7ce33e5047ebdbd860be3754caa69396059",
+            "imports": [
+              "__future__",
+              "argparse",
+              "json",
+              "numpy",
+              "pandas",
+              "pathlib",
+              "scipy"
+            ]
+          },
+          {
+            "path": "skills/statistical-modeling/scripts/glm_diagnostics.py",
+            "sha256": "c1bdd35612dd7e09e341cc690fa035facb478c7b4b077be074f694874a1ac786",
+            "imports": [
+              "__future__",
+              "argparse",
+              "json",
+              "numpy",
+              "pandas",
+              "pathlib",
+              "scipy.special",
+              "scipy.stats"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "simulation-sports",
+        "skill_sha256": "495e80ae12375612c592c208a596b5a785d6246a9e8c453aaebc950de00a36b4",
+        "scripts": [
+          {
+            "path": "skills/simulation-sports/scripts/season_win_sim.py",
+            "sha256": "ce88d6b7295547b909e88f56e666d8265ad79c1aadd81ce6a66c1b9f3d90019c",
+            "imports": [
+              "__future__",
+              "argparse",
+              "json",
+              "numpy",
+              "pandas",
+              "pathlib",
+              "typing"
+            ]
+          }
+        ]
+      }
+    ],
+    "runtime_installed": false,
+    "runtime_adopted": false
+  },
+  "crawlora": {
+    "repository": "https://github.com/Crawlora-org/crawlora-skills.git",
+    "commit": "250c4b400989c7f4976e9505ff4fd4f04b52cda2",
+    "license": "MIT",
+    "license_sha256": "00909f20d50e72c6a17810efff7646cd76849e889b47df9683355f5ca5f17ae4",
+    "skills": [
+      {
+        "name": "sports-betting-research",
+        "skill_sha256": "3c09460cead98d473dca0fdda39632b5aee7dad6e2836604cd7b5c4943ab28f7",
+        "scripts": [
+          {
+            "path": "skills/sports-betting-research/scripts/crawlora.sh",
+            "sha256": "a0574a15ef4d13ede342b516e91d8af34f8c0f2afd3fbe5a62dda32d3393ca0f"
+          }
+        ]
+      }
+    ],
+    "runtime_installed": false,
+    "runtime_adopted": false
+  }
+}

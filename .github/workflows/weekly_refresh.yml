@@ -1,11 +1,13 @@
 name: NFL weekly research refresh
 on:
+  push:
+    branches: [codex/agent-skills-infrastructure-2026-11-16]
+    paths: [.github/workflows/weekly_refresh.yml]
   workflow_dispatch:
   schedule:
     - cron: '0 13 * * 2' # Tuesday 10:00 America/Sao_Paulo
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 concurrency:
   group: nfl-weekly-refresh
   cancel-in-progress: false
@@ -78,40 +80,19 @@ jobs:
             reports/refresh_logs/
           if-no-files-found: error
           retention-days: 90
-      - name: Propose diagnostic for review; never merge
+      - name: Publish safe diagnostic summary and receipt
         if: always()
-        id: proposal
-        continue-on-error: true
-        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
-        with:
-          commit-message: 'chore: record weekly research ingestion outcome'
-          title: 'NFL 2026 — Weekly research ingestion diagnostic'
-          body: |
-            Review reports/latest_nflverse_ingestion.json for OK/ERROR and step outcomes.
-            Raw snapshots and logs are attached to the linked Actions run (90-day retention).
-            Canonical research tables and detailed audits are in the artifact; PARTIAL means unresolved records remain.
-            No historical data or model has been updated or approved. A failure diagnostic is not a successful refresh.
-          base: ${{ github.ref_name }}
-          branch: automation/nflverse-weekly
-          add-paths: |
-            reports/latest_nflverse_ingestion.json
-            reports/latest_canonical_build.json
-      - name: Record actual storage and PR permission outcome
-        if: always()
+        id: publication
         env:
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          TESTS_OUTCOME: ${{ steps.tests.outcome }}
+          INGEST_OUTCOME: ${{ steps.ingest.outcome }}
           ARTIFACT_URL: ${{ steps.artifacts.outputs.artifact-url }}
           ARTIFACT_OUTCOME: ${{ steps.artifacts.outcome }}
-          PR_URL: ${{ steps.proposal.outputs.pull-request-url }}
-          PR_OUTCOME: ${{ steps.proposal.outcome }}
           CANONICAL_OUTCOME: ${{ steps.canonical.outcome }}
-        run: |
-          mkdir -p reports/refresh_logs
-          python - <<'PYCODE'
-          import json,os,pathlib
-          keys=('ARTIFACT_URL','ARTIFACT_OUTCOME','PR_URL','PR_OUTCOME','CANONICAL_OUTCOME')
-          pathlib.Path('reports/refresh_logs/workflow_receipt.json').write_text(json.dumps({k:os.environ.get(k) for k in keys},indent=2))
-          PYCODE
-      - name: Preserve workflow permission receipt
+        run: python tools/publish_refresh.py
+      - name: Preserve workflow publication receipt
+        id: receipt
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -131,4 +112,7 @@ jobs:
           test "$TESTS_OUTCOME" = success
           test "$INGEST_OUTCOME" = success
           test "$CANONICAL_OUTCOME" = success
-          test "${{ steps.proposal.outcome }}" = success
+          test "${{ steps.artifacts.outcome }}" = success
+          test "${{ steps.publication.outcome }}" = success
+          test "${{ steps.receipt.outcome }}" = success
+          python -c 'import json; assert json.load(open("reports/refresh_logs/workflow_receipt.json"))["status"] == "OK"'

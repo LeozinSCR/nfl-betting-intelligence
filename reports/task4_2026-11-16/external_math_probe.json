@@ -1,0 +1,100 @@
+{
+  "fixture": "SYNTHETIC_NO_NFL_PREDICTIONS",
+  "checks": [
+    "conversion:1.01",
+    "conversion:1.5",
+    "conversion:1.9",
+    "conversion:2",
+    "conversion:3",
+    "conversion:10",
+    "conversion:100",
+    "invalid:nan",
+    "invalid:inf",
+    "invalid:-1",
+    "invalid:1",
+    "leakage_helper_rejects_auto_clean",
+    "network_block_confirmed"
+  ],
+  "devig": {
+    "status": true,
+    "data": {
+      "outcomes": [
+        {
+          "outcome": 0,
+          "input_odds": 1.9,
+          "implied_prob": 0.526316,
+          "fair_prob": 0.5,
+          "fair_american": -100.0
+        },
+        {
+          "outcome": 1,
+          "input_odds": 1.9,
+          "implied_prob": 0.526316,
+          "fair_prob": 0.5,
+          "fair_american": -100.0
+        }
+      ],
+      "overround": 1.052632,
+      "vig_pct": 5.26,
+      "format": "decimal"
+    },
+    "message": "Vig: 5.26% | Fair probs: 50.0%, 50.0%"
+  },
+  "calibration": {
+    "n": 4,
+    "brier": 0.024999999999999994,
+    "log_loss": 0.164252033486018,
+    "ece": 0.15,
+    "calibration_table": [
+      {
+        "bin": 2,
+        "lower": 0.1,
+        "upper": 0.2,
+        "n": 1,
+        "mean_probability": 0.1,
+        "observed_rate": 0.0
+      },
+      {
+        "bin": 3,
+        "lower": 0.2,
+        "upper": 0.3,
+        "n": 1,
+        "mean_probability": 0.2,
+        "observed_rate": 0.0
+      },
+      {
+        "bin": 9,
+        "lower": 0.8,
+        "upper": 0.9,
+        "n": 1,
+        "mean_probability": 0.8,
+        "observed_rate": 1.0
+      },
+      {
+        "bin": 10,
+        "lower": 0.9,
+        "upper": 1.0,
+        "n": 1,
+        "mean_probability": 0.9,
+        "observed_rate": 1.0
+      }
+    ],
+    "helper_assessment": {
+      "status": "descriptive-summary-only",
+      "min_bin_n": 20,
+      "sparse_populated_bins": [
+        2,
+        3,
+        9,
+        10
+      ],
+      "flags": [
+        "held_out_and_walk_forward_provenance_not_verified_by_helper",
+        "small_overall_sample",
+        "sparse_populated_bins"
+      ]
+    },
+    "verdict": "manual-review-required"
+  },
+  "runtime_adoption": false
+}

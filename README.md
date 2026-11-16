@@ -82,3 +82,13 @@ python -m nfl_betting.canonical --snapshot data/raw_auto/2026/SEU_RUN_ID --out d
 ```
 
 O pipeline produz 14 tabelas Parquet e `nfl.duckdb`, com manifest, hashes, crosswalk temporal, cobertura por jogo/equipe/jogador e auditoria completa. `PARTIAL` significa pendências explícitas, não prontidão operacional. A coleta real validada e suas limitações estão em [TASK3_DATA_RECONCILIATION.md](docs/TASK3_DATA_RECONCILIATION.md). Nenhum snapshot é retroativamente tratado como conhecido antes de sua captura, e nenhum histórico é substituído.
+
+
+## Skill operacional e consultas (Task 4)
+
+A skill Codex em [.agents/skills/nfl-betting-intelligence/SKILL.md](.agents/skills/nfl-betting-intelligence/SKILL.md)
+consulta snapshots por `python -m nfl_betting.research --help`, sem SQL livre ou
+rede. Exige temporada/semana/cutoff e registra snapshot/hash. Não aprova modelos
+nem apostas. [Relatório Task 4](docs/TASK4_AGENT_SKILLS_INTEGRATION.md) distingue
+implementado, ensaios externos e propostas. Arquivo local verificável:
+`python -m nfl_betting.archive --help`. Nenhuma skill externa instalada.
