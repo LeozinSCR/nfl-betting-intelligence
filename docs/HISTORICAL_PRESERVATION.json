@@ -1,0 +1,78 @@
+[
+  {
+    "path": "NFL_Codex_GitHub_Migration_Starter.zip",
+    "sha256": "3946f99c2b15fdb546c8465b7b10d4c2cc098c466a0cbc06151f97996fc375e0"
+  },
+  {
+    "path": "docs/CODEX_INITIAL_AUDIT.md",
+    "sha256": "caaf09f98975ba313489ca0705b92b558379511df04d7ec149bdbccd35a299bd"
+  },
+  {
+    "path": "docs/CODEX_INITIAL_AUDIT_EVIDENCE.json",
+    "sha256": "065109efc5d5199287f7d71a55bbd1f9adf5ca4c1718117a6294d8a75cad70ff"
+  },
+  {
+    "path": "legacy/NFL_Master_Phase33_Audited.xlsx",
+    "sha256": "46278575fa77975d711a83df730a94ca441e35d753b2591ae84303f4b94bea61"
+  },
+  {
+    "path": "legacy/NFL_Phase32_Master.xlsx",
+    "sha256": "036c4084081c28710acc4ce3d12f0a6f94e38eb943a392d55c1456fc1ed72709"
+  },
+  {
+    "path": "data/processed/calibration_summary.csv",
+    "sha256": "5885cc64150e4dc48ebaf9dc0cf56c6c402d12e919436dc8fca74e359b8a0417"
+  },
+  {
+    "path": "data/processed/defense_position_corrected_2026.csv",
+    "sha256": "9201d80e5ffc17b6aaadb289d301f5131c77cae7c450d0cf738660764e1d1fa7"
+  },
+  {
+    "path": "data/processed/opportunities_corrected_2026.csv",
+    "sha256": "20ff25df1b7b6937a5f04875fcd44e437a1a70a50250b03f4a095d6e423e0253"
+  },
+  {
+    "path": "data/processed/parlay_comparison.csv",
+    "sha256": "58f6b15f860fe06b60cb1b94760b5e198d29eef781d94e33401e043ef3c7e547"
+  },
+  {
+    "path": "data/processed/targets_walkforward_w8w9.csv",
+    "sha256": "a26549fb879abde882c4535d747e9dfe8e7abd55db960c20033fdda4714c793a"
+  },
+  {
+    "path": "data/processed/td_backtest.csv",
+    "sha256": "51379d1b79ddaa680af3282bb60407e7369e11d394d37b143cd6e8b9b3fa75d9"
+  },
+  {
+    "path": "data/processed/td_comparison.csv",
+    "sha256": "dcd4e664311f5e050d3989fad61c24b4fd085b3e9d578dc4b3df2980ecc56cdb"
+  },
+  {
+    "path": "data/processed/team_week_corrected_2026.csv",
+    "sha256": "1fe0030e02404cb7cdedfc6c960fbcd01b1d18b4f851c896c7b2d5d8c6cd8188"
+  },
+  {
+    "path": "data/processed/weekly_participation_2026.csv",
+    "sha256": "3e4b8fbc32a8f640e947b3fcec1fecc6ebaa85be0fd65b7f8a3a4e273e10c8d5"
+  },
+  {
+    "path": "data/processed/weekly_reconciliation_2026.csv",
+    "sha256": "01630244ace9ac555a4e38d281d303966abd8a564a58b5530f67f0d9d73a1d64"
+  },
+  {
+    "path": "data/reference/W10_TD_audit.csv",
+    "sha256": "e3526f47aee04756bc8ef9e4d4ed9711ba6c92019366185392610624effcf9e0"
+  },
+  {
+    "path": "data/reference/W10_player_props_audit.csv",
+    "sha256": "bcc85a0e9bcd010dd645bb52929586b2c124d57ae2afd9611a5636bf7a202ace"
+  },
+  {
+    "path": "data/reference/W10_props_market.csv",
+    "sha256": "d1d79ca5b6b1b75e6698ff8e0ef94d992393b266b1414cdd2c16de39f5cea23e"
+  },
+  {
+    "path": "reports/W10_206_selections.md",
+    "sha256": "4bd24e584d4e20365a8e64aa34960d0adfde07510d017cc4d9d1d52f5ea15bd6"
+  }
+]

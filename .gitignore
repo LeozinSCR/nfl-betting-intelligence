@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+data/raw/
+data/raw_auto/
+data/snapshots/
+*.sqlite
+*.duckdb
+stake_raw.json
+stake_offers.csv
+*.egg-info/
+build/
+dist/
+.coverage
+.pytest_cache/
+data/odds_snapshots/
