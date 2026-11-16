@@ -1,0 +1,2 @@
+# Complete hashed Python 3.12 environment, including build dependencies.
+-r requirements.lock

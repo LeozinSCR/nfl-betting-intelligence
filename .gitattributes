@@ -1,0 +1,5 @@
+# Preserve historical bytes (including original CSV CRLF/trailing blank lines).
+NFL_Codex_GitHub_Migration_Starter.zip binary
+legacy/** binary
+data/** -text -whitespace
+reports/W10_206_selections.md -text -whitespace

@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools==80.9.0", "wheel==0.45.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nfl-betting-intelligence"
+version = "0.2.0"
+description = "Auditable NFL research tools; no automated betting approval"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = ["nflreadpy==0.1.5", "polars==2.1.0", "pyarrow==26.0.1"]
+
+[project.scripts]
+nfl-ingest = "nfl_betting.ingest_nflverse:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["nfl_betting*"]

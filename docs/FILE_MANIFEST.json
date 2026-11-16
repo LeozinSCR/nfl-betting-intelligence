@@ -1,0 +1,147 @@
+[
+  {
+    "path": ".github/workflows/weekly_refresh.yml",
+    "bytes": 1790,
+    "sha256": "f589dc85dbfef8f43352a26d3d2870fc71c3b8eaf8bc5c545f4beda61ea08866"
+  },
+  {
+    "path": ".gitignore",
+    "bytes": 122,
+    "sha256": "bb44e4b66abb9fc6ee45e4ae92d7767d32e41af3c38740a1fc8ced4b86706430"
+  },
+  {
+    "path": "README.md",
+    "bytes": 2682,
+    "sha256": "dcac5a25d5c866754b288797458fe1ee14672f9a819355509313ca0b08df2dfd"
+  },
+  {
+    "path": "data/processed/calibration_summary.csv",
+    "bytes": 3740,
+    "sha256": "5885cc64150e4dc48ebaf9dc0cf56c6c402d12e919436dc8fca74e359b8a0417"
+  },
+  {
+    "path": "data/processed/defense_position_corrected_2026.csv",
+    "bytes": 14596,
+    "sha256": "9201d80e5ffc17b6aaadb289d301f5131c77cae7c450d0cf738660764e1d1fa7"
+  },
+  {
+    "path": "data/processed/opportunities_corrected_2026.csv",
+    "bytes": 252244,
+    "sha256": "20ff25df1b7b6937a5f04875fcd44e437a1a70a50250b03f4a095d6e423e0253"
+  },
+  {
+    "path": "data/processed/parlay_comparison.csv",
+    "bytes": 1078,
+    "sha256": "58f6b15f860fe06b60cb1b94760b5e198d29eef781d94e33401e043ef3c7e547"
+  },
+  {
+    "path": "data/processed/targets_walkforward_w8w9.csv",
+    "bytes": 49796,
+    "sha256": "a26549fb879abde882c4535d747e9dfe8e7abd55db960c20033fdda4714c793a"
+  },
+  {
+    "path": "data/processed/td_backtest.csv",
+    "bytes": 310646,
+    "sha256": "51379d1b79ddaa680af3282bb60407e7369e11d394d37b143cd6e8b9b3fa75d9"
+  },
+  {
+    "path": "data/processed/td_comparison.csv",
+    "bytes": 1224,
+    "sha256": "dcd4e664311f5e050d3989fad61c24b4fd085b3e9d578dc4b3df2980ecc56cdb"
+  },
+  {
+    "path": "data/processed/team_week_corrected_2026.csv",
+    "bytes": 10711,
+    "sha256": "1fe0030e02404cb7cdedfc6c960fbcd01b1d18b4f851c896c7b2d5d8c6cd8188"
+  },
+  {
+    "path": "data/processed/weekly_participation_2026.csv",
+    "bytes": 244689,
+    "sha256": "3e4b8fbc32a8f640e947b3fcec1fecc6ebaa85be0fd65b7f8a3a4e273e10c8d5"
+  },
+  {
+    "path": "data/processed/weekly_reconciliation_2026.csv",
+    "bytes": 187242,
+    "sha256": "01630244ace9ac555a4e38d281d303966abd8a564a58b5530f67f0d9d73a1d64"
+  },
+  {
+    "path": "data/reference/W10_TD_audit.csv",
+    "bytes": 39193,
+    "sha256": "e3526f47aee04756bc8ef9e4d4ed9711ba6c92019366185392610624effcf9e0"
+  },
+  {
+    "path": "data/reference/W10_player_props_audit.csv",
+    "bytes": 39229,
+    "sha256": "bcc85a0e9bcd010dd645bb52929586b2c124d57ae2afd9611a5636bf7a202ace"
+  },
+  {
+    "path": "data/reference/W10_props_market.csv",
+    "bytes": 4293,
+    "sha256": "d1d79ca5b6b1b75e6698ff8e0ef94d992393b266b1414cdd2c16de39f5cea23e"
+  },
+  {
+    "path": "docs/CODEX_HANDOFF.md",
+    "bytes": 3386,
+    "sha256": "cd565bd83e44a33382dfda7cbcf4e7f1f9d10d69a6bf19b3a4e27d415bf2384f"
+  },
+  {
+    "path": "docs/DATA_SOURCES.md",
+    "bytes": 1895,
+    "sha256": "654e14f7701da129d19cc06e6b57b373491b8e4465567a145e61c66caa65ec2b"
+  },
+  {
+    "path": "legacy/NFL_Master_Phase33_Audited.xlsx",
+    "bytes": 625270,
+    "sha256": "46278575fa77975d711a83df730a94ca441e35d753b2591ae84303f4b94bea61"
+  },
+  {
+    "path": "legacy/NFL_Phase32_Master.xlsx",
+    "bytes": 612876,
+    "sha256": "036c4084081c28710acc4ce3d12f0a6f94e38eb943a392d55c1456fc1ed72709"
+  },
+  {
+    "path": "reports/W10_206_selections.md",
+    "bytes": 65993,
+    "sha256": "4bd24e584d4e20365a8e64aa34960d0adfde07510d017cc4d9d1d52f5ea15bd6"
+  },
+  {
+    "path": "requirements.txt",
+    "bytes": 41,
+    "sha256": "07f7578eac624336cf183203fe8ec6de25d21c31a3559ad35f356b49520030b2"
+  },
+  {
+    "path": "src/__init__.py",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "src/nfl_betting/__init__.py",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "src/nfl_betting/ingest_nflverse.py",
+    "bytes": 2152,
+    "sha256": "9c60d67e5ceeb6139cd50056dcbdcfbaf60975cf08cae7195fbd5e8bf4496f1e"
+  },
+  {
+    "path": "src/nfl_betting/rules.py",
+    "bytes": 1870,
+    "sha256": "435f7f956b79c8922946b11f76573af1863798564b806b7539f1cd0dc1ced02c"
+  },
+  {
+    "path": "tests/test_rules.py",
+    "bytes": 979,
+    "sha256": "f8a632cf6786f35c093d69a98d3495877e9929fc04377f497fe24ca03a16bca1"
+  },
+  {
+    "path": "tools/STAKE_CONNECTOR_README.md",
+    "bytes": 1681,
+    "sha256": "ed2e0b6953a2985e6975c99273c292a019d2e456b024c6695a21389cff991280"
+  },
+  {
+    "path": "tools/stake_odds.py",
+    "bytes": 7138,
+    "sha256": "cadcd261b557acdce1d3893e06a250bcb4a98579c3c8ce05e1ea8ed7c0cd711d"
+  }
+]

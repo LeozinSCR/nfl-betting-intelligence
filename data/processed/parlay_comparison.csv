@@ -1,0 +1,15 @@
+﻿group,n,model,brier,logloss,mean_p,event_rate,gap_pp
+ALL,87,p_joint_independence,0.12065,0.397581,0.13913,0.14943,-1.03
+ALL,87,p_joint_adjusted,0.120482,0.397299,0.14809,0.14943,-0.13
+SAME_TEAM,58,p_joint_independence,0.115022,0.38572,0.12484,0.13793,-1.31
+SAME_TEAM,58,p_joint_adjusted,0.114779,0.385249,0.13775,0.13793,-0.02
+ALL,218,p_ind,0.238128,0.672965,0.51377,0.48624,2.75
+ALL,218,p_joint,0.238554,0.673295,0.52362,0.48624,3.74
+QB pass attempts + WR receptions,51,p_ind,0.223044,0.632469,0.39386,0.35294,4.09
+QB pass attempts + WR receptions,51,p_joint,0.225757,0.639405,0.42042,0.35294,6.75
+QB pass yards + WR rec yards,51,p_ind,0.256039,0.720583,0.45372,0.41176,4.2
+QB pass yards + WR rec yards,51,p_joint,0.256119,0.717254,0.47039,0.41176,5.86
+RB carries + TE receptions,58,p_ind,0.243109,0.684631,0.52678,0.46552,6.13
+RB carries + TE receptions,58,p_joint,0.242528,0.683461,0.52426,0.46552,5.87
+RB carries + WR receptions,58,p_ind,0.230659,0.655037,0.65901,0.68966,-3.06
+RB carries + WR receptions,58,p_joint,0.230387,0.654277,0.66054,0.68966,-2.91
