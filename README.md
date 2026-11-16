@@ -71,3 +71,14 @@ O workflow semanal propõe um diagnóstico revisável, inclusive em erro, e mant
 `NFL_historical_sources_2026.zip`, PBP/weekly originais e geradores dos modelos continuam ausentes. Persistem a falha histórica de probabilidade conjunta, inconsistências de QA e falta de backtesting/calibração suficientes. Consulte [TASK2_IMPLEMENTATION.md](docs/TASK2_IMPLEMENTATION.md) para evidências desta etapa.
 
 Nunca commitar credenciais. Snaps novos precisam de crosswalk temporal PFR/GSIS/Sleeper; não substituem routes run nem comprovam inativos oficiais.
+
+## Banco canônico (Tarefa 3)
+
+```bash
+python -m nfl_betting.canonical --help
+python -m nfl_betting.canonical --season 2026 --raw-out data/raw_auto --out data/canonical
+# Ou reprocessar uma coleta imutável específica:
+python -m nfl_betting.canonical --snapshot data/raw_auto/2026/SEU_RUN_ID --out data/canonical
+```
+
+O pipeline produz 14 tabelas Parquet e `nfl.duckdb`, com manifest, hashes, crosswalk temporal, cobertura por jogo/equipe/jogador e auditoria completa. `PARTIAL` significa pendências explícitas, não prontidão operacional. A coleta real validada e suas limitações estão em [TASK3_DATA_RECONCILIATION.md](docs/TASK3_DATA_RECONCILIATION.md). Nenhum snapshot é retroativamente tratado como conhecido antes de sua captura, e nenhum histórico é substituído.

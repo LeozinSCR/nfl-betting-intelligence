@@ -44,17 +44,26 @@ jobs:
         run: |
           set -o pipefail
           python -m nfl_betting.ingest_nflverse --season 2026 --out data/raw_auto 2>&1 | tee reports/refresh_logs/ingest.log
+      - name: Build canonical database and reconciliation audit
+        id: canonical
+        if: always() && steps.tests.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          python tools/build_canonical.py 2>&1 | tee reports/refresh_logs/canonical.log
       - name: Record outcomes even when no manifest exists
         if: always()
         env:
           INSTALL_OUTCOME: ${{ steps.install.outcome }}
           TESTS_OUTCOME: ${{ steps.tests.outcome }}
           INGEST_OUTCOME: ${{ steps.ingest.outcome }}
+          CANONICAL_OUTCOME: ${{ steps.canonical.outcome }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: >-
           python tools/refresh_diagnostics.py
           --install "$INSTALL_OUTCOME" --tests "$TESTS_OUTCOME" --ingest "$INGEST_OUTCOME"
-          --run-url "$RUN_URL"
+          --run-url "$RUN_URL" --canonical "$CANONICAL_OUTCOME" --canonical-root data/canonical
       - name: Preserve raw snapshot, manifest, diagnostics and logs
         id: artifacts
         if: always()
@@ -63,12 +72,16 @@ jobs:
           name: nfl-refresh-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             data/raw_auto/2026/
+            data/canonical/2026/
+            reports/latest_canonical_build.json
             reports/latest_nflverse_ingestion.json
             reports/refresh_logs/
           if-no-files-found: error
           retention-days: 90
       - name: Propose diagnostic for review; never merge
         if: always()
+        id: proposal
+        continue-on-error: true
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
         with:
           commit-message: 'chore: record weekly research ingestion outcome'
@@ -76,16 +89,46 @@ jobs:
           body: |
             Review reports/latest_nflverse_ingestion.json for OK/ERROR and step outcomes.
             Raw snapshots and logs are attached to the linked Actions run (90-day retention).
+            Canonical research tables and detailed audits are in the artifact; PARTIAL means unresolved records remain.
             No historical data or model has been updated or approved. A failure diagnostic is not a successful refresh.
+          base: ${{ github.ref_name }}
           branch: automation/nflverse-weekly
-          add-paths: reports/latest_nflverse_ingestion.json
+          add-paths: |
+            reports/latest_nflverse_ingestion.json
+            reports/latest_canonical_build.json
+      - name: Record actual storage and PR permission outcome
+        if: always()
+        env:
+          ARTIFACT_URL: ${{ steps.artifacts.outputs.artifact-url }}
+          ARTIFACT_OUTCOME: ${{ steps.artifacts.outcome }}
+          PR_URL: ${{ steps.proposal.outputs.pull-request-url }}
+          PR_OUTCOME: ${{ steps.proposal.outcome }}
+          CANONICAL_OUTCOME: ${{ steps.canonical.outcome }}
+        run: |
+          mkdir -p reports/refresh_logs
+          python - <<'PYCODE'
+          import json,os,pathlib
+          keys=('ARTIFACT_URL','ARTIFACT_OUTCOME','PR_URL','PR_OUTCOME','CANONICAL_OUTCOME')
+          pathlib.Path('reports/refresh_logs/workflow_receipt.json').write_text(json.dumps({k:os.environ.get(k) for k in keys},indent=2))
+          PYCODE
+      - name: Preserve workflow permission receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: nfl-refresh-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+          path: reports/refresh_logs/workflow_receipt.json
+          if-no-files-found: error
+          retention-days: 90
       - name: Keep failed ingestion visible in Actions
         if: always()
         env:
           INSTALL_OUTCOME: ${{ steps.install.outcome }}
           TESTS_OUTCOME: ${{ steps.tests.outcome }}
           INGEST_OUTCOME: ${{ steps.ingest.outcome }}
+          CANONICAL_OUTCOME: ${{ steps.canonical.outcome }}
         run: |
           test "$INSTALL_OUTCOME" = success
           test "$TESTS_OUTCOME" = success
           test "$INGEST_OUTCOME" = success
+          test "$CANONICAL_OUTCOME" = success
+          test "${{ steps.proposal.outcome }}" = success
