@@ -18,9 +18,9 @@ A CLI aceita as seis fontes documentadas. Cada execução usa timestamp com micr
 - `weekly_refresh.yml`: terça 13:00 UTC (10h São Paulo) e execução manual. Só ganha agendamento após integração à branch padrão e permissões de Actions. Não foi ativado por merge nesta tarefa.
 - Instalação/testes/coleta mantêm `outcome` verdadeiro, com `continue-on-error` apenas para permitir coleta do diagnóstico. Dependências das etapas impedem ingestão se os testes falharem.
 - `refresh_diagnostics.py`, sem dependências externas, roda com `always()`: inclui status de todas as etapas, run URL, manifesto completo e hash, hashes de logs e diagnóstico explícito `NO_MANIFEST` quando necessário. Manifesto ausente/corrompido/múltiplo resulta em ERROR.
-- Upload `always()` preserva dados brutos, manifestos, diagnóstico e logs por **90 dias**, antes da tentativa de PR. O job termina falhando se instalação, testes ou ingestão falharem. Falha do próprio upload/PR também mantém o job vermelho.
-- O PR propõe apenas `reports/latest_nflverse_ingestion.json`. Não propõe atualização automática dos históricos ou modelos e não faz auto-merge. A branch `automation/nflverse-weekly` é reutilizada; uma execução posterior pode atualizar o PR existente. Cada run mantém artefato separado e link para logs.
-- Permissões necessárias: contents/write e pull-requests/write; habilitar “Allow GitHub Actions to create and approve pull requests” quando a política da organização permitir. Sem isso, o artefato/log ainda existe, mas a criação de PR pode falhar. Não declarar publicação bem-sucedida sem URL real.
+- Upload `always()` preserva brutos, banco, manifests e logs por **90 dias**. A Task 4 remove a tentativa de PR do bot e usa `contents: read`: a restrição que falhou no PR #3 não bloqueia essa alternativa.
+- `tools/publish_refresh.py` registra outcomes e URL real do artefato em recibo, publica `GITHUB_STEP_SUMMARY` e declara PR_OUTCOME=NOT_REQUESTED. Um segundo artefato guarda o recibo. Falhas de estágios/upload/publicação/recibo deixam o job vermelho; PARTIAL permanece diagnóstico de dados.
+- O padrão não cria branch/PR, não atualiza Master e não exige elevar permissões. Administrador só precisa revisar autorização de PRs do bot se essa opção for reintroduzida no futuro.
 - Ações de terceiros fixadas em SHAs verificados; atualizar esses SHAs somente com revisão. Jobs têm timeout e a coleta semanal não é cancelada por outra execução.
 
 A retenção de Actions **não é arquivo permanente**. Transferência para armazenamento durável e catálogo de snapshots ainda são pendências. Falhas graves anteriores ao checkout/Python, cancelamento forçado ou indisponibilidade do próprio GitHub podem impedir o diagnóstico dentro do job; verificar a execução no GitHub.
@@ -60,6 +60,24 @@ Nenhuma ingestão libera modelos. Persistem NO_BET, backtests sem geradores comp
 
 `nfl-canonical` / `python -m nfl_betting.canonical` faz a coleta e construção em pastas exclusivas, ou recebe `--snapshot` para reprocessar uma coleta específica. URLs/headers/corpos HTTP são capturados na sessão do loader, sem cache; versões e hashes acompanham o run. Resultados futuros/inconsistência de calendário, chaves duplicadas, identidade ambígua e adulteração de hashes bloqueiam o build. Falha da fonte injuries permite banco vazio tipado e PARTIAL, com diagnóstico; fontes essenciais ausentes resultam ERROR. Exit 2 permanece em erro de coleta ao vivo, mesmo que seja possível preservar um banco parcial.
 
-O workflow semanal tem etapa `canonical` independente para aproveitar evidência parcial da coleta. Os artefatos incluem o catálogo, 14 Parquets, auditoria completa e raw HTTP, por 90 dias. O diagnóstico diferencia PARTIAL de ERROR; PARTIAL não significa nenhuma aprovação. O recibo posterior às etapas de upload/PR guarda URLs e outcomes efetivos, inclusive se a política do GitHub bloquear a criação de PR. O job não encobre essa falha. Os dois manifests de diagnóstico podem ser propostos em PR; não há mudança no Master.
+O workflow semanal tem etapa `canonical` independente para aproveitar evidência parcial da coleta. Artefatos retêm 14 Parquets, DB, raws, auditoria e logs por90 dias. A Task 4 substitui a publicação via PR pela alternativa acima; a evidência da falha passada permanece no relatório da Task 3.
 
 Consultar `docs/TASK3_DATA_RECONCILIATION.md` e `reports/task3_2026-11-16/evidence_index.json` para a execução real, pendências e evidência de validação remota. As evidências históricas anteriores permanecem preservadas; os novos manifests não substituem os originais.
+
+## Task 4: skill, consultas e arquivo verificável
+
+Manual: `.agents/skills/nfl-betting-intelligence/SKILL.md`. Após instalar o pacote:
+
+```bash
+python -m nfl_betting.research --database /BUILD --task games --season 2026 --week 9 --cutoff 2026-11-16T23:05:10+00:00
+python -m nfl_betting.research --help
+python -m nfl_betting.archive export --raw /RAW --canonical /BUILD --destination /NOVA_COPIA
+python -m nfl_betting.archive verify --folder /NOVA_COPIA --expected-catalog SHA_IMPRESSO_NA_EXPORTACAO
+```
+
+O exemplo é pesquisa histórica e não cutoff pré-jogo. Guarde a resposta JSON
+com snapshot/hash/código em arquivo novo; não reutilize relatórios antigos.
+Arquivo local verificado não é backup remoto durável: persistir o bundle e o
+digest independente antes de expirar Actions, com provedor/IAM/retenção definidos
+pelo administrador. Não adicionar raws ou DuckDB ao Git. Proposta completa em
+`TASK4_AGENT_SKILLS_INTEGRATION.md`. Integrações pré-jogo continuam UNCONFIGURED.

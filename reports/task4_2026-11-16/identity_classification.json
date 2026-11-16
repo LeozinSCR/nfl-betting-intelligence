@@ -1,0 +1,23 @@
+{
+  "source_snapshot_id": "20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808",
+  "database_sha256": "868d8e2429674b5f0ac697a438b69869220661859df3e4be02e4649e87e8a046",
+  "pending_records": 2619,
+  "classification": [
+    {
+      "category": "ROSTER_GSIS_MISSING",
+      "records": 11
+    },
+    {
+      "category": "SNAP_ID_UNRESOLVED",
+      "records": 2598
+    },
+    {
+      "category": "STATS_GSIS_MISSING",
+      "records": 10
+    }
+  ],
+  "resolved_this_task": 0,
+  "name_matching": false,
+  "legacy_modified": false,
+  "reason": "No additional authoritative temporal identifier crosswalk tested; originals retained"
+}

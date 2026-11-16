@@ -1,0 +1,130 @@
+{
+  "espn_nfl_week9": {
+    "url": "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=2026&seasontype=2&week=9&limit=1000",
+    "resolved_url": "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=2026&seasontype=2&week=9&limit=1000",
+    "observed_at": "2026-11-16T23:04:36.867147+00:00",
+    "status": 200,
+    "bytes": 133973,
+    "sha256": "86d2e77d83fc51640122ba71aee6dcf473e1b402d18f4be1c308b2546d228d9a",
+    "last_modified": null,
+    "raw_path": "/workspace/scratch/task4-espn_nfl_week9.body",
+    "season": {
+      "type": 2,
+      "year": 2026
+    },
+    "week": {
+      "number": 9,
+      "teamsOnBye": [
+        {
+          "id": "10",
+          "uid": "s:20~l:28~t:10",
+          "location": "Tennessee",
+          "name": "Titans",
+          "abbreviation": "TEN",
+          "displayName": "Tennessee Titans",
+          "shortDisplayName": "Titans",
+          "isActive": true,
+          "links": [
+            {
+              "rel": [
+                "clubhouse",
+                "desktop",
+                "team"
+              ],
+              "href": "https://www.espn.com/nfl/team/_/name/ten/tennessee-titans",
+              "text": "Clubhouse",
+              "isExternal": false,
+              "isPremium": false
+            }
+          ],
+          "logo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/ten.png",
+          "logoDark": "https://a.espncdn.com/i/teamlogos/nfl/500-dark/scoreboard/ten.png"
+        },
+        {
+          "id": "23",
+          "uid": "s:20~l:28~t:23",
+          "location": "Pittsburgh",
+          "name": "Steelers",
+          "abbreviation": "PIT",
+          "displayName": "Pittsburgh Steelers",
+          "shortDisplayName": "Steelers",
+          "isActive": true,
+          "links": [
+            {
+              "rel": [
+                "clubhouse",
+                "desktop",
+                "team"
+              ],
+              "href": "https://www.espn.com/nfl/team/_/name/pit/pittsburgh-steelers",
+              "text": "Clubhouse",
+              "isExternal": false,
+              "isPremium": false
+            }
+          ],
+          "logo": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/pit.png",
+          "logoDark": "https://a.espncdn.com/i/teamlogos/nfl/500-dark/scoreboard/pit.png"
+        }
+      ]
+    },
+    "events": 15,
+    "comparison": {
+      "canonical_games": 15,
+      "public_response_events": 15,
+      "team_pair_matches": 15,
+      "missing_pairs": 0,
+      "extra_pairs": 0,
+      "identity_join_performed": false,
+      "data_adopted": false
+    },
+    "restriction": "Connector rejected for recurring integration after terms review; no raw response redistributed or canonical data replaced"
+  },
+  "crawlora_without_auth": {
+    "url": "https://api.crawlora.net/api/v1/espn/scoreboard?sport=football&league=nfl",
+    "resolved_url": "https://api.crawlora.net/api/v1/espn/scoreboard?sport=football&league=nfl",
+    "observed_at": "2026-11-16T23:04:38.971878+00:00",
+    "status": 401,
+    "bytes": 71,
+    "sha256": "062c708407928cbe629a3f12ddc28089555f8eefd50271934ca687454f144d61",
+    "last_modified": null,
+    "raw_path": "/workspace/scratch/task4-crawlora_without_auth.body",
+    "response_text": "{\"code\":401,\"msg\":\"Authentication Failed\",\"data\":\"api key is required\"}"
+  },
+  "crawlora_pricing": {
+    "url": "https://crawlora.net/pricing",
+    "resolved_url": "https://crawlora.net/pricing",
+    "observed_at": "2026-11-16T23:04:39.702927+00:00",
+    "status": 200,
+    "bytes": 1019759,
+    "sha256": "939e39fdc49acd73fd67439f83f8399cdaaf90ca0a6b26bd30b695da3009f814",
+    "last_modified": null,
+    "raw_path": "/workspace/scratch/task4-crawlora_pricing.body"
+  },
+  "crawlora_docs": {
+    "url": "https://crawlora.net/docs",
+    "resolved_url": "https://crawlora.net/docs",
+    "observed_at": "2026-11-16T23:04:40.257744+00:00",
+    "status": 200,
+    "bytes": 1215733,
+    "sha256": "68ea283466d344aff70b5e4902a401f453f438a4cb9fe357807858d1ba9b6761",
+    "last_modified": null,
+    "raw_path": "/workspace/scratch/task4-crawlora_docs.body"
+  },
+  "espn_terms": {
+    "url": "https://disneytermsofuse.com/english/",
+    "resolved_url": "https://disneytermsofuse.com/english/",
+    "observed_at": "2026-11-16T23:04:40.776380+00:00",
+    "status": 200,
+    "bytes": 110693,
+    "sha256": "dcea2ff2a8f921f5d117be46208688aed7efcf2e7c750ca39eeb7cfc6d9c2609",
+    "last_modified": null,
+    "raw_path": "/workspace/scratch/task4-espn_terms.body"
+  },
+  "crawlora_terms": {
+    "url": "https://crawlora.net/terms",
+    "status": 403,
+    "observed_at": "2026-11-16T23:14:39.054552+00:00",
+    "content_reviewed": false,
+    "limitation": "Observed HTTP 403; no access bypass, no authenticated integration adopted"
+  }
+}
