@@ -1,0 +1,129 @@
+{
+  "unresolved_snap_diagnostics": [
+    {
+      "identity_diagnostic": "PFR_ABSENT_FROM_ROSTER_SNAPSHOT",
+      "records": 2598
+    }
+  ],
+  "snap_coverage": [
+    {
+      "week": 1,
+      "records": 1492,
+      "games": 16,
+      "mapped_records": 1216
+    },
+    {
+      "week": 2,
+      "records": 1502,
+      "games": 16,
+      "mapped_records": 1222
+    },
+    {
+      "week": 3,
+      "records": 1494,
+      "games": 16,
+      "mapped_records": 1216
+    },
+    {
+      "week": 4,
+      "records": 1482,
+      "games": 16,
+      "mapped_records": 1209
+    },
+    {
+      "week": 5,
+      "records": 1400,
+      "games": 15,
+      "mapped_records": 1139
+    },
+    {
+      "week": 6,
+      "records": 1301,
+      "games": 14,
+      "mapped_records": 1060
+    },
+    {
+      "week": 7,
+      "records": 1310,
+      "games": 14,
+      "mapped_records": 1059
+    },
+    {
+      "week": 8,
+      "records": 1311,
+      "games": 14,
+      "mapped_records": 1071
+    },
+    {
+      "week": 9,
+      "records": 1401,
+      "games": 15,
+      "mapped_records": 1135
+    },
+    {
+      "week": 10,
+      "records": 1220,
+      "games": 13,
+      "mapped_records": 988
+    }
+  ],
+  "player_key_types": [
+    {
+      "identity_type": "GSIS",
+      "records": 3072
+    },
+    {
+      "identity_type": "UNRESOLVED_SOURCE_ID",
+      "records": 386
+    }
+  ],
+  "historical_positions_recovered": [
+    {
+      "recovered_position": "QB",
+      "records": 288
+    },
+    {
+      "recovered_position": "P",
+      "records": 3
+    },
+    {
+      "recovered_position": "WR",
+      "records": 7
+    },
+    {
+      "recovered_position": "RB",
+      "records": 22
+    },
+    {
+      "recovered_position": "OL",
+      "records": 3
+    },
+    {
+      "recovered_position": "DL",
+      "records": 2
+    }
+  ],
+  "two_point_affected_historical": [
+    {
+      "opportunity_type": "TARGET",
+      "events": 50
+    },
+    {
+      "opportunity_type": "RUSH",
+      "events": 7
+    }
+  ],
+  "exporter_sha256": "79a0db77d5080e5cfa732f667089fc987bbe22a301abd7b591036b0e6c600b5b",
+  "database_folder": "/workspace/scratch/task3-final-controlled/canonical/2026/20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808-build-8a6563317e1b45bfb81e6eba2f1a89e9",
+  "full_audit_rows": 27823,
+  "full_audit_csv_sha256": "7ff36f3f248f72f838bf5f23e45a97be11b1eaa935ac0692be512340ad01a6cc",
+  "note": "Focused CSVs are explicit subsets; complete audit and all raw/canonical tables remain in immutable run/artifact",
+  "files": {
+    "build_manifest.json": "0f1e72b10f89911210de380a4b3a74c3249bc71f1ca2183a2bd07f4bd455888d",
+    "coverage_by_game_team.csv": "f250c0525cab7daa099fedc6da3cd907a005b330e7ef9bd4d3426f25f61cacb9",
+    "historical_focus.csv": "7b5870cd0ef4884ad54083119a872d4386bbe9d80486aa13c6ea53bccf3c3a45",
+    "historical_participation.csv": "6d049953662c18b841373b8c986707f8218a609def646577a5fe4a43b747081c",
+    "ingestion_manifest.json": "713220723b490f528da325a61c3e17a3fc1d6fbc1a448416018df88526a08dc8",
+    "unresolved_snap_ids.csv": "89eef3b0eba8e3b7d53ab2ce759fc79db464d6a2ef5cae17f447d3d0b3f40276"
+  }
+}

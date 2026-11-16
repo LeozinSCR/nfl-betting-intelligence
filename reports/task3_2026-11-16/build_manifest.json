@@ -1,0 +1,2218 @@
+{
+  "schema_version": 1,
+  "status": "PARTIAL",
+  "source_snapshot_id": "20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808",
+  "source_manifest_sha256": "713220723b490f528da325a61c3e17a3fc1d6fbc1a448416018df88526a08dc8",
+  "source_snapshot_path": "/workspace/scratch/task3-final-controlled/raw/2026/20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808",
+  "code": {
+    "git_commit": "f366a9b847edd088505c7f5dcad3caacccf9067a",
+    "worktree_dirty": true,
+    "files_sha256": {
+      "pyproject.toml": "2d7b6f7d8aa811a571a8a2d3f66db9e517006e49e87ad1b148e7c47be83024ab",
+      "requirements.lock": "d08c478332242484c6d7a743ba10b5dd49dc860b7341800ec184e16d2b5c94fc",
+      "src/nfl_betting/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "src/nfl_betting/canonical.py": "8774e7ee4777e3690b840239d91fc0ecbc24da43ec69330f2238cce2f9bcc3ac",
+      "src/nfl_betting/canonical.sql": "d5a357814af81d8b866320e6281d42102824a9cc28f3b410cb95487a6b048177",
+      "src/nfl_betting/ingest_nflverse.py": "b707b157ff0c08a23a04e18e3f643086c96a85665c7014a9f45ab759588e90f7",
+      "src/nfl_betting/provenance.py": "cb59b5b24e0ac2284b8d9a38d316f94c98bbb3c43d990e30070a22fbbebfa5e6",
+      "src/nfl_betting/rules.py": "cfb128987169519fe35550d2e08f7f860de0c202cf5cf7aceb79e4b8504996be"
+    }
+  },
+  "built_at_utc": "2026-11-16T22:34:29.757762+00:00",
+  "tables": {
+    "games": {
+      "rows": 272,
+      "path": "games.parquet",
+      "sha256": "a1a91d14e4a801381b857abb3e2f82ae7a771d0157a0be89e11a728a1acf511e",
+      "schema": [
+        {
+          "column_name": "source_row",
+          "column_type": "UINTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "game_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "season",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "season_type",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "week",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "game_date",
+          "column_type": "DATE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "kickoff_utc",
+          "column_type": "TIMESTAMP WITH TIME ZONE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "home_team_raw",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "away_team_raw",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "home_team",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "away_team",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "home_score",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "away_score",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "has_result",
+          "column_type": "BOOLEAN",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "completion_basis",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source_snapshot_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": "'20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808'",
+          "extra": null
+        },
+        {
+          "column_name": "available_at",
+          "column_type": "TIMESTAMP WITH TIME ZONE",
+          "null": "YES",
+          "key": null,
+          "default": "'2026-11-16T22:34:29.750160+00:00'",
+          "extra": null
+        }
+      ]
+    },
+    "teams": {
+      "rows": 32,
+      "path": "teams.parquet",
+      "sha256": "ed63fef77394e4091d20d6067e46ed7a2ac5cb0c82b3d59d2e57514bb41738a5",
+      "schema": [
+        {
+          "column_name": "season",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "team",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source_snapshot_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": "'20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808'",
+          "extra": null
+        },
+        {
+          "column_name": "available_at",
+          "column_type": "TIMESTAMP WITH TIME ZONE",
+          "null": "YES",
+          "key": null,
+          "default": "'2026-11-16T22:34:29.750160+00:00'",
+          "extra": null
+        }
+      ]
+    },
+    "players": {
+      "rows": 3458,
+      "path": "players.parquet",
+      "sha256": "9921d08a11675ed9f73a5e1969b36859ed7a52be5440e0c43c3d5cef467a2758",
+      "schema": [
+        {
+          "column_name": "player_key",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "player_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "identity_type",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "display_names",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source_snapshot_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": "'20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808'",
+          "extra": null
+        },
+        {
+          "column_name": "available_at",
+          "column_type": "TIMESTAMP WITH TIME ZONE",
+          "null": "YES",
+          "key": null,
+          "default": "'2026-11-16T22:34:29.750160+00:00'",
+          "extra": null
+        }
+      ]
+    },
+    "player_crosswalk": {
+      "rows": 24565,
+      "path": "player_crosswalk.parquet",
+      "sha256": "ee8bbf2f98243105c9a3481609a39b4a045ff06a8ddb13aa95f4357baf27e055",
+      "schema": [
+        {
+          "column_name": "roster_source_row",
+          "column_type": "UINTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "season",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "season_type",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "week",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "team_raw",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "team",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "player_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "pfr_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "sleeper_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "display_name",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "position",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "roster_status",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source_snapshot_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": "'20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808'",
+          "extra": null
+        },
+        {
+          "column_name": "available_at",
+          "column_type": "TIMESTAMP WITH TIME ZONE",
+          "null": "YES",
+          "key": null,
+          "default": "'2026-11-16T22:34:29.750160+00:00'",
+          "extra": null
+        }
+      ]
+    },
+    "player_week": {
+      "rows": 27174,
+      "path": "player_week.parquet",
+      "sha256": "e50ab64f577177df918477c6185daa4c1b426d1f5737d908fc53a1c3dae898c5",
+      "schema": [
+        {
+          "column_name": "season",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "season_type",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "week",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "game_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "team",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "player_key",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "player_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "pfr_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "sleeper_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "roster_position",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "display_name",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "roster_status",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "roster_source_row",
+          "column_type": "UINTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "stats_source_row",
+          "column_type": "UINTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "snap_source_row",
+          "column_type": "UINTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "pbp_source_rows",
+          "column_type": "UINTEGER[]",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "weekly_targets",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "weekly_carries",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "weekly_receptions",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "weekly_receiving_yards",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "weekly_rushing_yards",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "weekly_receiving_tds",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "weekly_rushing_tds",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "receptions",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "receiving_yards",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "rushing_yards",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "offensive_td",
+          "column_type": "HUGEINT",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "lateral_touches",
+          "column_type": "BIGINT",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "targets",
+          "column_type": "BIGINT",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "carries",
+          "column_type": "BIGINT",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "offense_snaps",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "defense_snaps",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "st_snaps",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "offensive_snap_share",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "participation",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "opportunity_basis",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source_snapshot_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": "'20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808'",
+          "extra": null
+        },
+        {
+          "column_name": "available_at",
+          "column_type": "TIMESTAMP WITH TIME ZONE",
+          "null": "YES",
+          "key": null,
+          "default": "'2026-11-16T22:34:29.750160+00:00'",
+          "extra": null
+        }
+      ]
+    },
+    "team_week": {
+      "rows": 298,
+      "path": "team_week.parquet",
+      "sha256": "27051e575d890a462b00f3a92b83ec48e2f67f835db04bbff696d4291baf2046",
+      "schema": [
+        {
+          "column_name": "season",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "season_type",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "week",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "game_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "team",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "defense",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "offensive_plays",
+          "column_type": "BIGINT",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "pass_attempts",
+          "column_type": "BIGINT",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "rush_attempts",
+          "column_type": "BIGINT",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "dropbacks",
+          "column_type": "BIGINT",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "epa_per_play",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "epa_observations",
+          "column_type": "BIGINT",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "success_rate",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source_snapshot_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": "'20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808'",
+          "extra": null
+        },
+        {
+          "column_name": "available_at",
+          "column_type": "TIMESTAMP WITH TIME ZONE",
+          "null": "YES",
+          "key": null,
+          "default": "'2026-11-16T22:34:29.750160+00:00'",
+          "extra": null
+        }
+      ]
+    },
+    "offensive_opportunities": {
+      "rows": 17445,
+      "path": "offensive_opportunities.parquet",
+      "sha256": "c6f8afb46f4016535cefe5aacd5ed838c34afec4798885fbf46e29d434d56fb5",
+      "schema": [
+        {
+          "column_name": "pbp_source_row",
+          "column_type": "UINTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "season",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "season_type",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "week",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "game_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "play_id",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "team",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "defense",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "player_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "pbp_display_name",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "opportunity_type",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "attempt_flag",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "two_point_attempt",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "play_type",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "play_deleted",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "yardline_100",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "receptions",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "yards",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source_yards",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "formation_context",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "offensive_td",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "position",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "roster_display_name",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "classification",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source_snapshot_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": "'20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808'",
+          "extra": null
+        },
+        {
+          "column_name": "available_at",
+          "column_type": "TIMESTAMP WITH TIME ZONE",
+          "null": "YES",
+          "key": null,
+          "default": "'2026-11-16T22:34:29.750160+00:00'",
+          "extra": null
+        }
+      ]
+    },
+    "snap_counts": {
+      "rows": 13913,
+      "path": "snap_counts.parquet",
+      "sha256": "2129a0ff12a1738a73ad510dc03bf8bffa39b890f68876d5ee163202b1eab4d5",
+      "schema": [
+        {
+          "column_name": "snap_source_row",
+          "column_type": "UINTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "game_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "season",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "season_type",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "week",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "team_raw",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "team",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "player_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "pfr_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "player_key",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "display_name",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "position",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "offense_snaps",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "defense_snaps",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "st_snaps",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "offensive_snap_share",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "defense_pct",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "st_pct",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "identity_status",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "identity_diagnostic",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source_snapshot_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": "'20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808'",
+          "extra": null
+        },
+        {
+          "column_name": "available_at",
+          "column_type": "TIMESTAMP WITH TIME ZONE",
+          "null": "YES",
+          "key": null,
+          "default": "'2026-11-16T22:34:29.750160+00:00'",
+          "extra": null
+        }
+      ]
+    },
+    "injuries": {
+      "rows": 3168,
+      "path": "injuries.parquet",
+      "sha256": "baf76c1ef225ab76a7abea0f6e34e8430967359e1f8904472cec0e1322f37d6b",
+      "schema": [
+        {
+          "column_name": "injury_source_row",
+          "column_type": "UINTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "season",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "season_type",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "week",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "team_raw",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "team",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "player_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "display_name",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "position",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "report_status",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "practice_status",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "report_primary_injury",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "report_secondary_injury",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "practice_primary_injury",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "practice_secondary_injury",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source_published_at",
+          "column_type": "TIMESTAMP WITH TIME ZONE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source_snapshot_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": "'20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808'",
+          "extra": null
+        },
+        {
+          "column_name": "available_at",
+          "column_type": "TIMESTAMP WITH TIME ZONE",
+          "null": "YES",
+          "key": null,
+          "default": "'2026-11-16T22:34:29.750160+00:00'",
+          "extra": null
+        }
+      ]
+    },
+    "defensive_matchups": {
+      "rows": 899,
+      "path": "defensive_matchups.parquet",
+      "sha256": "7563d9ead057f1d1fa000d9cdad291ac73ebd5028f8305066a91fdc530a0bc9f",
+      "schema": [
+        {
+          "column_name": "season",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "season_type",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "week",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "game_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "defense",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "opponent",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "position",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "targets",
+          "column_type": "BIGINT",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "receptions",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "receiving_yards",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source_snapshot_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": "'20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808'",
+          "extra": null
+        },
+        {
+          "column_name": "available_at",
+          "column_type": "TIMESTAMP WITH TIME ZONE",
+          "null": "YES",
+          "key": null,
+          "default": "'2026-11-16T22:34:29.750160+00:00'",
+          "extra": null
+        }
+      ]
+    },
+    "ingestion_manifest": {
+      "rows": 6,
+      "path": "ingestion_manifest.parquet",
+      "sha256": "9fe4247e7d6997d44aee12b66fc078999e32fac2b66d6bb6cfc193aa6529b998",
+      "schema": [
+        {
+          "column_name": "source",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "status",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "ingested_at_utc",
+          "column_type": "TIMESTAMP WITH TIME ZONE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source_updated_at",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "resolved_download_url",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "sha256",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "rows",
+          "column_type": "BIGINT",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "schema_json",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "http_json",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "code_json",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source_snapshot_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": "'20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808'",
+          "extra": null
+        },
+        {
+          "column_name": "available_at",
+          "column_type": "TIMESTAMP WITH TIME ZONE",
+          "null": "YES",
+          "key": null,
+          "default": "'2026-11-16T22:34:29.750160+00:00'",
+          "extra": null
+        }
+      ]
+    },
+    "reconciliation_audit": {
+      "rows": 27823,
+      "path": "reconciliation_audit.parquet",
+      "sha256": "b92d592e1e39d3a3c8117254b38b04971a3ae3a2866cf252acdcdba4832a99ce",
+      "schema": [
+        {
+          "column_name": "category",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "severity",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source_row",
+          "column_type": "BIGINT",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "season",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "week",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "game_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "team",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "player_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "original_json",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "canonical_json",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "detail",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source_snapshot_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": "'20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808'",
+          "extra": null
+        },
+        {
+          "column_name": "available_at",
+          "column_type": "TIMESTAMP WITH TIME ZONE",
+          "null": "YES",
+          "key": null,
+          "default": "'2026-11-16T22:34:29.750160+00:00'",
+          "extra": null
+        }
+      ]
+    },
+    "coverage_audit": {
+      "rows": 544,
+      "path": "coverage_audit.parquet",
+      "sha256": "1c89cfb36b7b56eaa760c19f053dfb837e5ed6df5330fface7d98bcab7ad138a",
+      "schema": [
+        {
+          "column_name": "game_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "season",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "season_type",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "week",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "team",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "opponent",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "has_result",
+          "column_type": "BOOLEAN",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "pbp_rows",
+          "column_type": "BIGINT",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "has_end_marker",
+          "column_type": "BOOLEAN",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "stats_rows",
+          "column_type": "BIGINT",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "snap_rows",
+          "column_type": "BIGINT",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "roster_rows",
+          "column_type": "BIGINT",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "players_observed",
+          "column_type": "BIGINT",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "observed_home_score",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "observed_away_score",
+          "column_type": "DOUBLE",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "home_score",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "away_score",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source_snapshot_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": "'20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808'",
+          "extra": null
+        },
+        {
+          "column_name": "available_at",
+          "column_type": "TIMESTAMP WITH TIME ZONE",
+          "null": "YES",
+          "key": null,
+          "default": "'2026-11-16T22:34:29.750160+00:00'",
+          "extra": null
+        }
+      ]
+    },
+    "source_coverage": {
+      "rows": 55931,
+      "path": "source_coverage.parquet",
+      "sha256": "7b3beab8be3c3024680cdd97888dbbe026160627fbd6cb079d3ec6c7ea2e8fa5",
+      "schema": [
+        {
+          "column_name": "source",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "scope",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "season",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "season_type",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "week",
+          "column_type": "INTEGER",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "game_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "team",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "player_key",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "rows_observed",
+          "column_type": "BIGINT",
+          "null": "YES",
+          "key": null,
+          "default": null,
+          "extra": null
+        },
+        {
+          "column_name": "source_snapshot_id",
+          "column_type": "VARCHAR",
+          "null": "YES",
+          "key": null,
+          "default": "'20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808'",
+          "extra": null
+        },
+        {
+          "column_name": "available_at",
+          "column_type": "TIMESTAMP WITH TIME ZONE",
+          "null": "YES",
+          "key": null,
+          "default": "'2026-11-16T22:34:29.750160+00:00'",
+          "extra": null
+        }
+      ]
+    }
+  },
+  "errors": [],
+  "historical_data_updated": false,
+  "financial_approved": false,
+  "statistical_approved": false,
+  "input_constraints": [],
+  "history_sha256": {
+    "weekly_reconciliation_2026.csv": "01630244ace9ac555a4e38d281d303966abd8a564a58b5530f67f0d9d73a1d64",
+    "opportunities_corrected_2026.csv": "20ff25df1b7b6937a5f04875fcd44e437a1a70a50250b03f4a095d6e423e0253",
+    "weekly_participation_2026.csv": "3e4b8fbc32a8f640e947b3fcec1fecc6ebaa85be0fd65b7f8a3a4e273e10c8d5"
+  },
+  "coverage_by_week": [
+    {
+      "week": 1,
+      "scheduled_games": 16.0,
+      "games_with_result": 16.0,
+      "fully_covered_result_games": 16.0
+    },
+    {
+      "week": 2,
+      "scheduled_games": 16.0,
+      "games_with_result": 16.0,
+      "fully_covered_result_games": 16.0
+    },
+    {
+      "week": 3,
+      "scheduled_games": 16.0,
+      "games_with_result": 16.0,
+      "fully_covered_result_games": 16.0
+    },
+    {
+      "week": 4,
+      "scheduled_games": 16.0,
+      "games_with_result": 16.0,
+      "fully_covered_result_games": 16.0
+    },
+    {
+      "week": 5,
+      "scheduled_games": 15.0,
+      "games_with_result": 15.0,
+      "fully_covered_result_games": 15.0
+    },
+    {
+      "week": 6,
+      "scheduled_games": 14.0,
+      "games_with_result": 14.0,
+      "fully_covered_result_games": 14.0
+    },
+    {
+      "week": 7,
+      "scheduled_games": 14.0,
+      "games_with_result": 14.0,
+      "fully_covered_result_games": 14.0
+    },
+    {
+      "week": 8,
+      "scheduled_games": 14.0,
+      "games_with_result": 14.0,
+      "fully_covered_result_games": 14.0
+    },
+    {
+      "week": 9,
+      "scheduled_games": 15.0,
+      "games_with_result": 15.0,
+      "fully_covered_result_games": 15.0
+    },
+    {
+      "week": 10,
+      "scheduled_games": 14.0,
+      "games_with_result": 13.0,
+      "fully_covered_result_games": 13.0
+    },
+    {
+      "week": 11,
+      "scheduled_games": 13.0,
+      "games_with_result": 0.0,
+      "fully_covered_result_games": 0.0
+    },
+    {
+      "week": 12,
+      "scheduled_games": 16.0,
+      "games_with_result": 0.0,
+      "fully_covered_result_games": 0.0
+    },
+    {
+      "week": 13,
+      "scheduled_games": 14.0,
+      "games_with_result": 0.0,
+      "fully_covered_result_games": 0.0
+    },
+    {
+      "week": 14,
+      "scheduled_games": 15.0,
+      "games_with_result": 0.0,
+      "fully_covered_result_games": 0.0
+    },
+    {
+      "week": 15,
+      "scheduled_games": 16.0,
+      "games_with_result": 0.0,
+      "fully_covered_result_games": 0.0
+    },
+    {
+      "week": 16,
+      "scheduled_games": 16.0,
+      "games_with_result": 0.0,
+      "fully_covered_result_games": 0.0
+    },
+    {
+      "week": 17,
+      "scheduled_games": 16.0,
+      "games_with_result": 0.0,
+      "fully_covered_result_games": 0.0
+    },
+    {
+      "week": 18,
+      "scheduled_games": 16.0,
+      "games_with_result": 0.0,
+      "fully_covered_result_games": 0.0
+    }
+  ],
+  "participation": [
+    {
+      "participation": "DEFENSE_AND_SPECIAL_TEAMS",
+      "records": 4045
+    },
+    {
+      "participation": "DEFENSE_ONLY",
+      "records": 1714
+    },
+    {
+      "participation": "LATERAL_TOUCH_RECORDED",
+      "records": 1
+    },
+    {
+      "participation": "NO_CONFIRMED_PARTICIPATION",
+      "records": 13247
+    },
+    {
+      "participation": "OFFENSIVE_SNAPS_OPPORTUNITIES_UNKNOWN",
+      "records": 1851
+    },
+    {
+      "participation": "OFFENSIVE_SNAPS_ZERO_OPPORTUNITIES",
+      "records": 802
+    },
+    {
+      "participation": "OPPORTUNITIES_RECORDED",
+      "records": 2874
+    },
+    {
+      "participation": "SPECIAL_TEAMS_ONLY",
+      "records": 2640
+    }
+  ],
+  "reconciliation": [
+    {
+      "category": "EXCLUDED_TWO_POINT_CONVERSION",
+      "severity": "INFO",
+      "records": 68
+    },
+    {
+      "category": "HISTORICAL_IDENTITY_RESOLVED",
+      "severity": "INFO",
+      "records": 325
+    },
+    {
+      "category": "HISTORICAL_MATCH",
+      "severity": "INFO",
+      "records": 2635
+    },
+    {
+      "category": "HISTORICAL_OPPORTUNITY_MATCH",
+      "severity": "INFO",
+      "records": 3272
+    },
+    {
+      "category": "HISTORICAL_PARTICIPATION_NO_CONFIRMED_PARTICIPATION",
+      "severity": "INFO",
+      "records": 1
+    },
+    {
+      "category": "HISTORICAL_PARTICIPATION_OFFENSIVE_SNAPS_ZERO_OPPORTUNITIES",
+      "severity": "INFO",
+      "records": 269
+    },
+    {
+      "category": "HISTORICAL_PARTICIPATION_OPPORTUNITIES_RECORDED",
+      "severity": "INFO",
+      "records": 2301
+    },
+    {
+      "category": "HISTORICAL_PARTICIPATION_SPECIAL_TEAMS_ONLY",
+      "severity": "INFO",
+      "records": 153
+    },
+    {
+      "category": "HISTORICAL_TD_ATTRIBUTION_RESOLVED",
+      "severity": "INFO",
+      "records": 1
+    },
+    {
+      "category": "HISTORICAL_TEAM_ALIAS_RESOLVED",
+      "severity": "INFO",
+      "records": 89
+    },
+    {
+      "category": "NORMALIZED_INCOMPLETE_PASS_YARDS_ZERO",
+      "severity": "INFO",
+      "records": 3078
+    },
+    {
+      "category": "OPPORTUNITY_FROM_PUNT_FORMATION",
+      "severity": "INFO",
+      "records": 3
+    },
+    {
+      "category": "ROSTER_GSIS_MISSING",
+      "severity": "PENDING",
+      "records": 11
+    },
+    {
+      "category": "SNAP_ID_UNRESOLVED",
+      "severity": "PENDING",
+      "records": 2598
+    },
+    {
+      "category": "SPECIAL_TEAMS_ONLY",
+      "severity": "INFO",
+      "records": 2640
+    },
+    {
+      "category": "STATS_GSIS_MISSING",
+      "severity": "PENDING",
+      "records": 10
+    },
+    {
+      "category": "TWO_POINT_WITHOUT_OFFENSIVE_PLAYER_ID",
+      "severity": "INFO",
+      "records": 3
+    },
+    {
+      "category": "WEEKLY_PBP_MATCH",
+      "severity": "INFO",
+      "records": 10366
+    }
+  ],
+  "source_null_id_counts": {
+    "schedules": {},
+    "player_stats": {
+      "player_id": 10
+    },
+    "pbp": {},
+    "snap_counts": {
+      "pfr_player_id": 0
+    },
+    "injuries": {
+      "gsis_id": 0
+    },
+    "rosters_weekly": {
+      "gsis_id": 11
+    }
+  },
+  "audit_csv": {
+    "path": "reconciliation_audit.csv",
+    "sha256": "7ff36f3f248f72f838bf5f23e45a97be11b1eaa935ac0692be512340ad01a6cc"
+  },
+  "pending_audit_rows": 2619,
+  "database": {
+    "path": "nfl.duckdb",
+    "sha256": "868d8e2429674b5f0ac697a438b69869220661859df3e4be02e4649e87e8a046"
+  },
+  "finished_at_utc": "2026-11-16T22:34:31.808406+00:00"
+}

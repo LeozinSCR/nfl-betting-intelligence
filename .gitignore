@@ -15,3 +15,5 @@ dist/
 .coverage
 .pytest_cache/
 data/odds_snapshots/
+data/canonical/
+reports/refresh_logs/

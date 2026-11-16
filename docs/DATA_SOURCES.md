@@ -27,3 +27,7 @@ Não presumir APIs ESPN estáveis/oficiais. Não há autorização de redistribu
 GSIS/PFR/Sleeper precisam de tabela temporal versionada; nomes não bastam. Separar snaps ofensivos, defensivos e special teams, jogadores inativos, ativos sem snaps ofensivos, ativos com zero oportunidades e desconhecidos. Não transformar ausência em zero. Targets/carries convencionais excluem conversões de dois pontos. Routes/TPRR/YPRR continuam não verificados no histórico.
 
 Fonte atualizada não substitui os arquivos congelados W1–W9/W10 parcial nem corrige retroativamente previsões. Novas coletas ficam separadas, com hashes e diagnósticos, até reconciliação revisada. Ver `OPERATIONS.md` e `VALIDATION_CONTRACT.md`.
+
+## Evidência adicional da Tarefa 3
+
+A coleta real de 16/11/2026 foi repetida de ponta a ponta com captura dos corpos HTTP, origem resolvida, headers disponíveis e hashes. A cobertura segue W1–W9 e 13/14 jogos W10, com 149 resultados. Crosswalk usa GSIS/PFR/Sleeper do roster por semana/equipe; não há consulta nova à API Sleeper nem à Stake. Ver `TASK3_DATA_RECONCILIATION.md` para 89 aliases resolvidos, 325 identidades recuperadas e 2.619 pendências mantidas. Essa evidência de coleta é distinta das sondagens da auditoria inicial descritas acima.

@@ -55,3 +55,11 @@ Na rotina de CI, o checkout é novo e contém uma única coleta. Localmente, dir
 `docs/FILE_MANIFEST.json` é o manifesto original do ZIP e permanece idêntico. Código/documentação evoluídos na raiz podem divergir legitimamente dele; não regenerar o manifesto para apagar a referência original. `docs/HISTORICAL_PRESERVATION.json` fixa os arquivos históricos, ZIP e auditoria inicial que não devem mudar nesta etapa. `tools/verify_history.py` verifica ambos os conjuntos.
 
 Nenhuma ingestão libera modelos. Persistem NO_BET, backtests sem geradores completos, uma previsão conjunta histórica inválida e cobertura não demonstrada de player props Stake. Operação financeira, liquidação, integração Sleeper, crosswalk temporal e atualização do Master exigem trabalho posterior e revisão.
+
+## Tarefa 3: construção e reconciliação canônica
+
+`nfl-canonical` / `python -m nfl_betting.canonical` faz a coleta e construção em pastas exclusivas, ou recebe `--snapshot` para reprocessar uma coleta específica. URLs/headers/corpos HTTP são capturados na sessão do loader, sem cache; versões e hashes acompanham o run. Resultados futuros/inconsistência de calendário, chaves duplicadas, identidade ambígua e adulteração de hashes bloqueiam o build. Falha da fonte injuries permite banco vazio tipado e PARTIAL, com diagnóstico; fontes essenciais ausentes resultam ERROR. Exit 2 permanece em erro de coleta ao vivo, mesmo que seja possível preservar um banco parcial.
+
+O workflow semanal tem etapa `canonical` independente para aproveitar evidência parcial da coleta. Os artefatos incluem o catálogo, 14 Parquets, auditoria completa e raw HTTP, por 90 dias. O diagnóstico diferencia PARTIAL de ERROR; PARTIAL não significa nenhuma aprovação. O recibo posterior às etapas de upload/PR guarda URLs e outcomes efetivos, inclusive se a política do GitHub bloquear a criação de PR. O job não encobre essa falha. Os dois manifests de diagnóstico podem ser propostos em PR; não há mudança no Master.
+
+Consultar `docs/TASK3_DATA_RECONCILIATION.md` e `reports/task3_2026-11-16/evidence_index.json` para a execução real, pendências e evidência de validação remota. As evidências históricas anteriores permanecem preservadas; os novos manifests não substituem os originais.
