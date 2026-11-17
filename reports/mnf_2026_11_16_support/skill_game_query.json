@@ -1,0 +1,63 @@
+{
+  "status": "OK",
+  "decision": "NO_BET",
+  "financial_approved": false,
+  "statistical_approved": false,
+  "task": "games",
+  "season": 2026,
+  "season_type": "REG",
+  "week": 10,
+  "cutoff": "2026-11-17T00:36:04+00:00",
+  "team": "LAC",
+  "player_id": null,
+  "source_snapshot_id": "20261117T003403.829042Z-d5b317a4722848c7a32cc88e1edadc6b",
+  "build_manifest_sha256": "b6ba517750ec598f1ab41c29feb06261e5cc307e731c452fb233e3a631b0260d",
+  "database_sha256": "bf75769c1d58edb03c698450a439841987c5315747298e47f0f5269482eac9fb",
+  "code": {
+    "git_commit": "338fb63d4e4d1cc2037cecd46c4b55345d81c065",
+    "worktree_dirty": true,
+    "files_sha256": {
+      "pyproject.toml": "0534e4f5b92c8647e99e7e67d36305c328a9abba679aadb7ca67f5f488b5d09d",
+      "requirements.lock": "d08c478332242484c6d7a743ba10b5dd49dc860b7341800ec184e16d2b5c94fc",
+      "src/nfl_betting/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "src/nfl_betting/archive.py": "2ebc12947ad735b29bc8591f5e07d49678598899cb6fa4682dc5ee65416577a6",
+      "src/nfl_betting/canonical.py": "8774e7ee4777e3690b840239d91fc0ecbc24da43ec69330f2238cce2f9bcc3ac",
+      "src/nfl_betting/canonical.sql": "d5a357814af81d8b866320e6281d42102824a9cc28f3b410cb95487a6b048177",
+      "src/nfl_betting/ingest_nflverse.py": "b707b157ff0c08a23a04e18e3f643086c96a85665c7014a9f45ab759588e90f7",
+      "src/nfl_betting/mnf_preview.py": "b29a3ba9d1675845c0787132802ebaa2f2070d7a2fd5e4ec5d1909891647a267",
+      "src/nfl_betting/pregame.py": "584abd1ded3bdda7b5205041750508e58adea8921f29ca871701265eb9ba91e2",
+      "src/nfl_betting/provenance.py": "cb59b5b24e0ac2284b8d9a38d316f94c98bbb3c43d990e30070a22fbbebfa5e6",
+      "src/nfl_betting/research.py": "8e96e7040cda7092ec44b6560a9938d3fe392f1c7ee3fdb6b6b5df797a1138be",
+      "src/nfl_betting/rules.py": "cfb128987169519fe35550d2e08f7f860de0c202cf5cf7aceb79e4b8504996be"
+    }
+  },
+  "total_rows": 1,
+  "truncated": false,
+  "records": [
+    {
+      "source_row": 149,
+      "game_id": "2026_10_LAC_BAL",
+      "season": 2026,
+      "season_type": "REG",
+      "week": 10,
+      "game_date": "2026-11-16",
+      "kickoff_utc": "2026-11-17 01:15:00+00:00",
+      "home_team_raw": "BAL",
+      "away_team_raw": "LAC",
+      "home_team": "BAL",
+      "away_team": "LAC",
+      "home_score": null,
+      "away_score": null,
+      "has_result": false,
+      "completion_basis": "schedule_scores_present",
+      "source_snapshot_id": "20261117T003403.829042Z-d5b317a4722848c7a32cc88e1edadc6b",
+      "available_at": "2026-11-17 00:34:14.356672+00:00"
+    }
+  ],
+  "limitations": [
+    "Historical research, not a pregame feature matrix",
+    "No calibrated projection registry; no execution authorization",
+    "Weekly injuries do not certify official inactives; snaps are not routes"
+  ],
+  "queried_at_utc": "2026-11-17T00:48:59.385341+00:00"
+}
