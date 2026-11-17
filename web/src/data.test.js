@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { approvedEv, filterProps, hasApprovedEv, sortProps, validQuote } from './data.js';
+import { approvedEv, filterProps, hasApprovedEv, snapshotFreshness, sortProps, validQuote } from './data.js';
 
 const base = {
   id: 'p1', player_name: 'Atleta', team: 'LAC', position: 'WR', market: 'rec_yards',
@@ -87,4 +87,22 @@ test('confronto sem props fica vazio e um novo confronto aceita Geral', () => {
     filterProps(gameProps, { gameId: 'g2', team: '' }).map((prop) => prop.id),
     ['other-game']
   );
+});
+
+test('idade do snapshot usa a coleta e não a data de republicação', () => {
+  const data = {
+    source_snapshot_id: 'snap', source_available_at_utc: '2026-11-10T12:00:00Z',
+    cutoff_utc: '2026-11-16T20:00:00Z', published_at_utc: '2026-11-17T12:00:00Z'
+  };
+  assert.equal(snapshotFreshness(data, new Date('2026-11-17T11:59:59Z')), 'WITHIN_WINDOW');
+  assert.equal(snapshotFreshness(data, new Date('2026-11-17T12:00:00Z')), 'STALE');
+});
+
+test('snapshots legados usam o cutoff e datas desconhecidas são explícitas', () => {
+  const now = new Date('2026-11-17T12:00:00Z');
+  assert.equal(snapshotFreshness({ cutoff_utc: '2026-11-01T12:00:00Z' }, now), 'UNAVAILABLE');
+  assert.equal(snapshotFreshness({ source_snapshot_id: 'snap' }, now), 'UNKNOWN');
+  assert.equal(snapshotFreshness({
+    source_snapshot_id: 'snap', cutoff_utc: '2026-11-01T12:00:00Z'
+  }, now), 'STALE');
 });

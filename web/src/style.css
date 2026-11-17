@@ -51,8 +51,10 @@ main { padding-top: 24px; }
 .hero-side small { display: flex; align-items: center; gap: 7px; margin-bottom: 9px; color: #b9eed7; font-size: 12px; font-weight: 700; }
 .hero-side span, .hero-side b { display: block; }
 .hero-side span { margin-bottom: 4px; color: #cad9e9; font-size: 12px; }
+.hero-side .snapshot-meta { margin-top: 8px; }
+.hero-side .snapshot-state { width: fit-content; margin: 8px 0 0; padding: 4px 6px; border-radius: 5px; background: #fff0d9; color: #754615; font-weight: 700; }
+.snapshot-coverage { margin: 10px 0 0; }
 .hero-side b, .stat strong, .metric b, .frequency-window, table, .game-date { font-variant-numeric: tabular-nums; }
-.score b { font-size: clamp(23px, 3vw, 35px); }
 .back, .jump { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0; border: 0; background: none; color: #cff2e4; font-size: 13px; font-weight: 650; text-decoration: none; }
 .back:hover, .jump:hover { text-decoration: underline; }
 .jump { margin-top: 6px; }
@@ -78,6 +80,7 @@ main { padding-top: 24px; }
 .gameTeams { display: flex; align-items: center; gap: 9px; font-size: 18px; }
 .gameTeams span { color: var(--muted); font-size: 14px; }
 .game > svg { justify-self: end; color: var(--blue); }
+.game-coverage { grid-column: 1 / -1; color: var(--muted); font-size: 11px; }
 .status { justify-self: end; padding: 4px 7px; border-radius: 5px; color: #754615; background: #fff0d9; font-size: 11px; font-weight: 650; }
 .status.final { color: #276454; background: #e1f3ec; }
 .filters { display: grid; gap: 14px; padding: 15px; margin-bottom: 14px; }
@@ -101,6 +104,12 @@ main { padding-top: 24px; }
 .filters .check { display: inline-flex; min-height: 32px; align-items: center; gap: 8px; }
 .filters .check input { width: 17px; height: 17px; margin: 0; accent-color: var(--blue); }
 .proplist { display: grid; gap: 11px; }
+.coverage-panel { margin-bottom: 14px; padding: 13px 15px; font-size: 13px; }
+.coverage-panel p { margin: 5px 0; color: var(--muted); }
+.coverage-panel details { margin-top: 8px; }
+.coverage-panel summary { width: fit-content; cursor: pointer; padding-block: 5px; color: var(--blue); font-weight: 650; }
+.coverage-panel ul { margin-block: 4px 8px; padding-inline-start: 19px; }
+.load-more { display: block; min-height: 44px; margin: 14px auto 0; padding: 7px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: var(--blue); font-weight: 650; }
 .prop { min-width: 0; padding: 14px 17px; }
 .prop-heading { margin: 0; font-size: inherit; }
 .prophead { display: grid; grid-template-columns: 40px minmax(0, 1fr) minmax(95px, .4fr) minmax(84px, auto) 20px; align-items: center; gap: 11px; width: 100%; min-height: 46px; padding: 0; border: 0; border-radius: 6px; background: none; color: inherit; text-align: left; }

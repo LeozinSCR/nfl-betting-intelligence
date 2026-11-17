@@ -5,9 +5,10 @@ import {
   ChevronRight, Database, Filter, Info, RefreshCw, Search, ShieldAlert, Ticket, Trophy
 } from 'lucide-react';
 import './style.css';
-import { EMPTY_DATA, approvedEv, filterProps, hasApprovedEv, sortProps, validQuote } from './data.js';
+import { EMPTY_DATA, approvedEv, filterProps, hasApprovedEv, snapshotFreshness, sortProps, validQuote } from './data.js';
 import { HistoryDistribution, isNumber, Metric, number, ObservedFrequency, percent } from './HistoryPanel.jsx';
 import GameAnalysis from './GameAnalysis.jsx';
+import CoveragePanel from './CoveragePanel.jsx';
 
 const MARKET_LABEL = {
   receptions: 'Recepções', rec_yards: 'Jardas recebidas', rush_yards: 'Jardas corridas',
@@ -16,9 +17,11 @@ const MARKET_LABEL = {
 };
 const STATUS_LABEL = {
   FINAL: 'Final', SCHEDULED: 'Agendado no cutoff',
-  SCHEDULED_AT_CUTOFF: 'Agendado no cutoff', RESULT_RECORDED: 'Resultado registrado'
+  SCHEDULED_AT_CUTOFF: 'Agendado no cutoff', RESULT_RECORDED: 'Resultado registrado',
+  STARTED_STATUS_UNKNOWN: 'Sem resultado no cutoff'
 };
 const DEFAULT_FILTERS = { search: '', position: '', market: '', minOdds: 1.5, onlyQuoted: false };
+const PROP_PAGE_SIZE = 48;
 
 const datetime = (value, includeYear = true) => value && Number.isFinite(Date.parse(value))
   ? new Date(value).toLocaleString('pt-BR', {
@@ -73,7 +76,8 @@ function App() {
         return response.json();
       })
       .then((payload) => {
-        if (!Array.isArray(payload.games) || !Array.isArray(payload.props) || !Array.isArray(payload.matchups)) {
+        if (!Array.isArray(payload.games) || !Array.isArray(payload.props) || !Array.isArray(payload.matchups)
+          || ('player_coverage' in payload && !Array.isArray(payload.player_coverage))) {
           throw Error('Contrato de dados inválido');
         }
         if (active) setData({ ...EMPTY_DATA, ...payload });
@@ -86,6 +90,7 @@ function App() {
   const game = data.games.find((item) => item.game_id === gameId);
   const matchup = data.matchups.find((item) => item.game_id === gameId);
   const quoted = data.props.filter((prop) => validQuote(prop.quote)).length;
+  const freshness = snapshotFreshness(data);
   const route = gameId || view;
   useEffect(() => {
     if (previousRoute.current && previousRoute.current !== route) {
@@ -134,11 +139,15 @@ function App() {
             focusSection('props-title');
           }}>Ver props do confronto <ArrowDown size={16} /></a>}
         </div>
-        {game && game.status === 'FINAL' && isNumber(game.away_score) && isNumber(game.home_score)
-          ? <div className="hero-side score"><small>Placar final</small><b>{game.away_score} – {game.home_score}</b></div>
-          : <div className="hero-side"><small><Database size={15} /> {data.source_snapshot_id ? 'Snapshot histórico' : 'Snapshot local'}</small>
-            <span>Cutoff · horário de Brasília</span><b>{datetime(data.cutoff_utc)}</b>
-          </div>}
+        <div className="hero-side">
+          <small><Database size={15} /> {data.source_snapshot_id ? 'Snapshot congelado' : 'Snapshot indisponível'}</small>
+          <span>Cutoff · horário de Brasília</span><b>{datetime(data.cutoff_utc)}</b>
+          {data.source_available_at_utc && <span className="snapshot-meta">Coleta {datetime(data.source_available_at_utc)}</span>}
+          {freshness === 'STALE' && <span className="snapshot-state">Desatualizado</span>}
+          {freshness === 'UNKNOWN' && <span className="snapshot-meta">Idade do snapshot indisponível</span>}
+          {game && ['FINAL', 'RESULT_RECORDED'].includes(game.status) && isNumber(game.away_score) && isNumber(game.home_score) &&
+            <span className="snapshot-meta">Placar registrado · {game.away_score} – {game.home_score}</span>}
+        </div>
       </section>
       <section className="notice" aria-live="polite">
         <ShieldAlert size={19} /><div><b>NO_BET</b>
@@ -151,11 +160,16 @@ function App() {
         <Stat label="Cenários de props" value={data.props.length} icon={BarChart3} />
         <Stat label="Cotações válidas" value={quoted} icon={Ticket} />
       </section>}
+      {!game && isNumber(data.counts?.scheduled_games_at_cutoff) && <p className="micro snapshot-coverage">
+        Cobertura no cutoff · {data.counts.scheduled_games_with_analysis}/{data.counts.scheduled_games_at_cutoff} confrontos agendados com análise de equipes · {data.counts.games_with_props} com props · {data.counts.players_assessed > 0
+          ? `${data.counts.players}/${data.counts.players_assessed} jogadores avaliados com cenários`
+          : 'sem roster elegível para avaliar jogadores'}
+      </p>}
       {game && <GameAnalysis game={game} matchup={matchup} />}
       {!game && view === 'games' && <Games games={data.games} week={data.week} />}
       <PropsExplorer key={game?.game_id || 'scanner'} game={game} records={data.props}
         filters={filters} setFilters={setFilters} sortBy={sortBy} setSortBy={setSortBy}
-        tdOnly={!game && view === 'td'} cutoff={data.cutoff_utc} />
+        tdOnly={!game && view === 'td'} cutoff={data.cutoff_utc} coverage={data.player_coverage} />
       <Provenance data={data} />
     </main>
     <footer>Pesquisa quantitativa · nenhuma aposta é executada · custo adicional R$ 0</footer>
@@ -181,9 +195,13 @@ function Games({ games, week }) {
     {games.length ? <div className="games">{games.map((game) =>
       <a key={game.game_id} className="game card" href={`#/game/${encodeURIComponent(game.game_id)}`}>
         <span className="game-date">{datetime(game.kickoff_utc, false)}</span>
-        <span className={`status ${game.status === 'FINAL' ? 'final' : ''}`}>{gameStatus(game)}</span>
+        <span className={`status ${['FINAL', 'RESULT_RECORDED'].includes(game.status) ? 'final' : ''}`}>{gameStatus(game)}</span>
         <span className="gameTeams"><b>{game.away_team}</b><span>×</span><b>{game.home_team}</b></span>
         <ChevronRight size={18} aria-hidden="true" />
+        {game.status === 'SCHEDULED_AT_CUTOFF' && game.coverage && <span className="game-coverage">
+          {game.coverage.matchup_status === 'AVAILABLE' ? 'Com análise de equipes' : 'Sem análise de equipes'}
+          {' · '}{game.coverage.prop_scenarios > 0 ? `${game.coverage.prop_scenarios} cenários` : 'Sem props'}
+        </span>}
       </a>
     )}</div> : <Empty icon={CalendarDays} title="Nenhum jogo publicado" />}
   </section>;
@@ -202,9 +220,10 @@ function TeamSelector({ game, team, onChange }) {
   </fieldset>;
 }
 
-function PropsExplorer({ game, records, filters, setFilters, sortBy, setSortBy, tdOnly, cutoff }) {
+function PropsExplorer({ game, records, filters, setFilters, sortBy, setSortBy, tdOnly, cutoff, coverage }) {
   // The game-keyed explorer remounts whenever navigation changes the matchup.
   const [team, setTeam] = useState('');
+  const [limit, setLimit] = useState(PROP_PAGE_SIZE);
   const gameId = game?.game_id;
   const scoped = useMemo(() => filterProps(records, {
     ...filters, market: tdOnly ? '' : filters.market, gameId, team, tdOnly
@@ -213,6 +232,7 @@ function PropsExplorer({ game, records, filters, setFilters, sortBy, setSortBy, 
   const availableEv = hasApprovedEv(scoped);
   const order = availableEv ? sortBy : 'quality';
   const props = useMemo(() => sortProps(scoped, order), [scoped, order]);
+  useEffect(() => setLimit(PROP_PAGE_SIZE), [filters, team, tdOnly, order]);
   const hasGameProps = !game || records.some((prop) => prop.game_id === gameId);
   const title = game ? 'Props deste confronto' : tdOnly ? 'Cenários de Anytime TD' : 'Hipóteses estatísticas';
   const change = (key, value) => setFilters((current) => ({ ...current, [key]: value }));
@@ -248,9 +268,16 @@ function PropsExplorer({ game, records, filters, setFilters, sortBy, setSortBy, 
         <span>A odd mínima só se aplica a cenários cotados.</span>
       </div>
     </div>
-    {props.length ? <div className="proplist">{props.map((prop) => <Prop key={prop.id} prop={prop} cutoff={cutoff} />)}</div>
+    {game && <CoveragePanel game={game} players={coverage.filter((player) => player.game_id === gameId)}
+      team={team} marketLabels={MARKET_LABEL} />}
+    {props.length ? <>
+      <div className="proplist">{props.slice(0, limit).map((prop) => <Prop key={prop.id} prop={prop} cutoff={cutoff} />)}</div>
+      {props.length > limit && <button className="load-more" onClick={() => setLimit((n) => n + PROP_PAGE_SIZE)}>
+        Mostrar mais cenários ({limit} de {props.length})
+      </button>}
+    </>
       : <Empty icon={Info} title={hasGameProps ? 'Nenhum cenário neste filtro' : 'Sem props pré-jogo publicadas'}>
-        {hasGameProps ? 'Experimente ajustar os filtros.' : 'O snapshot não traz cenários elegíveis para este confronto.'}
+        {hasGameProps ? 'Experimente ajustar os filtros.' : !game?.coverage && 'O snapshot não traz cenários elegíveis para este confronto.'}
       </Empty>}
   </section>;
 }
@@ -295,7 +322,10 @@ function Prop({ prop, cutoff }) {
         <Metric label="Snap share" value={percent(prop.volume?.offensive_snap_share_mean)} />
         <Metric label="Red zone" value={number(prop.volume?.red_zone_opportunities, 0)} />
         <Metric label="Goal line ≤5" value={number(prop.volume?.goal_line_opportunities, 0)} />
-      </div></div>
+      </div>
+        {prop.volume?.unavailable_metrics?.routes_run && <p className="micro">Routes run, TPRR e YPRR indisponíveis no catálogo.</p>}
+        {prop.volume?.unavailable_metrics?.red_zone_opportunities && <p className="micro">Red zone e goal line sem observações de campo completas.</p>}
+      </div>
       {defense && <div className="volume"><h4>Defesa de {prop.opponent} contra {defense.position}</h4>
         <div className="metrics">
           <Metric label="Jogos com evento da posição" value={number(defense.games_with_position_events, 0)} />
@@ -331,6 +361,7 @@ function Provenance({ data }) {
       <div><dt>Snapshot</dt><dd>{data.source_snapshot_id || 'Não publicado'}</dd></div>
       <div><dt>Banco SHA-256</dt><dd>{data.database_sha256 || '—'}</dd></div>
       <div><dt>Cutoff</dt><dd>{datetime(data.cutoff_utc)}</dd></div>
+      <div><dt>Disponibilidade da fonte</dt><dd>{datetime(data.source_available_at_utc)}</dd></div>
       <div><dt>Publicado</dt><dd>{datetime(data.generated_at_utc || data.published_at_utc)}</dd></div>
       <div><dt>Estado</dt><dd>{data.status}</dd></div>
       <div><dt>Identidades pendentes</dt><dd>{data.pending_identity_audit_rows ?? '—'}</dd></div>
