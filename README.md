@@ -32,7 +32,7 @@ uv pip compile pyproject.toml requirements-build.in --generate-hashes --python-v
 
 | Caminho | Finalidade |
 |---|---|
-| `src/nfl_betting/` | Coletor NFLverse e regras estruturais/numéricas |
+| `src/nfl_betting/` | Coletor, banco canônico, exportador web e regras estruturais/numéricas |
 | `tests/` | Testes offline com fixtures sintéticas e verificações dos históricos |
 | `tools/stake_odds.py` | Exportador read-only experimental, sem cobertura comprovada de player props |
 | `tools/refresh_diagnostics.py` | Diagnóstico de CI, inclusive sem manifesto de ingestão |
@@ -42,6 +42,7 @@ uv pip compile pyproject.toml requirements-build.in --generate-hashes --python-v
 | `reports/W10_206_selections.md` | Relatório histórico exploratório, não apostas executadas |
 | `docs/` | Auditoria, fontes, contratos, operação e preservação |
 | `.github/workflows/` | Testes offline e coleta semanal com diagnóstico/PR |
+| `web/` | PWA React/Vite estática; não contém chaves nem acessa DuckDB no navegador |
 
 ## Coleta independente
 
@@ -66,7 +67,7 @@ Cada execução grava em `data/raw_auto/2026/<timestamp-uuid>/`. O manifesto reg
 
 O [estado das fontes](docs/DATA_SOURCES.md) diferencia sondagens da auditoria e implementação atual. Na última evidência registrada, NFLverse respondeu às seis fontes e Sleeper ao cadastro; a Stake retornou somente mercados de equipes, sem player props ou Anytime TD. Nenhuma nova sondagem é feita pelos testes.
 
-O workflow semanal propõe um diagnóstico revisável, inclusive em erro, e mantém o job vermelho se a ingestão falhar. Não faz merge, não atualiza o Master e não executa apostas. Requer que os workflows sejam integrados à branch padrão e que Actions permita criação de PRs. Detalhes de retenção, permissões e reprodução de falhas estão em [OPERATIONS.md](docs/OPERATIONS.md).
+O workflow semanal publica diagnóstico e artefatos revisáveis, inclusive em erro, e mantém o job vermelho se a ingestão falhar. Não cria PR, não faz merge, não atualiza o Master e não executa apostas. A agenda só opera após integração à branch padrão. Detalhes de retenção, permissões e reprodução de falhas estão em [OPERATIONS.md](docs/OPERATIONS.md).
 
 `NFL_historical_sources_2026.zip`, PBP/weekly originais e geradores dos modelos continuam ausentes. Persistem a falha histórica de probabilidade conjunta, inconsistências de QA e falta de backtesting/calibração suficientes. Consulte [TASK2_IMPLEMENTATION.md](docs/TASK2_IMPLEMENTATION.md) para evidências desta etapa.
 
@@ -92,3 +93,27 @@ rede. Exige temporada/semana/cutoff e registra snapshot/hash. Não aprova modelo
 nem apostas. [Relatório Task 4](docs/TASK4_AGENT_SKILLS_INTEGRATION.md) distingue
 implementado, ensaios externos e propostas. Arquivo local verificável:
 `python -m nfl_betting.archive --help`. Nenhuma skill externa instalada.
+
+## Web V1.1 e exportação estática
+
+O navegador consome apenas JSON derivado. Ele não abre DuckDB, não recebe
+credenciais e continua funcional no estado sem odds. Para exportar um snapshot
+canônico já verificado:
+
+```bash
+nfl-web-export \
+  --database /CAMINHO/DO/BUILD_CANONICO \
+  --output web/public/data \
+  --season 2026 --week 10 \
+  --cutoff 2026-11-16T23:00:00+00:00 \
+  --publish-current
+cd web
+npm ci --no-audit --no-fund
+npm test
+npm run build
+```
+
+O diretório versionado por `source_snapshot_id` é imutável. Limiares alternativos
+são cenários analíticos derivados dos quantis e não linhas de bookmaker. Sem
+quote temporalmente válida e modelo calibrado, `EV=null` e `decision=NO_BET`.
+Consulte [TASK6_WEB_V1_DATA_INTEGRATION.md](docs/TASK6_WEB_V1_DATA_INTEGRATION.md).

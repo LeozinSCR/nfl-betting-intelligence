@@ -1,0 +1,171 @@
+{
+  "artifact_sha256": {
+    "game_analysis.json": "f4cf745b15d1bb443f8c9180126e75b6d157174d97ae01418973daa775e6d49e",
+    "games.json": "6dd4804a23559d30536d398c2d477206362de11be084767192b63f365159af16",
+    "player_props_analysis.json": "7a46e3c7253918a2efb6b0f46687e23970361e93fc0fb51eac0405f4384df7b7",
+    "players.json": "d771e0befa869fb543dead6625a0ee6823e8cabb47cb1292f00e6f2fe75d2fb4",
+    "teams.json": "e1e069f53991aec0b648c415449768481ffb015544d19c214f887c66d0312ac1"
+  },
+  "build_manifest_sha256": "0f1e72b10f89911210de380a4b3a74c3249bc71f1ca2183a2bd07f4bd455888d",
+  "code": {
+    "files_sha256": {
+      "pyproject.toml": "6ca2c840795ca527d67455874c4f94aa24a1b12857768a2c513c072007a27322",
+      "requirements.lock": "d08c478332242484c6d7a743ba10b5dd49dc860b7341800ec184e16d2b5c94fc",
+      "src/nfl_betting/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "src/nfl_betting/archive.py": "2ebc12947ad735b29bc8591f5e07d49678598899cb6fa4682dc5ee65416577a6",
+      "src/nfl_betting/canonical.py": "8774e7ee4777e3690b840239d91fc0ecbc24da43ec69330f2238cce2f9bcc3ac",
+      "src/nfl_betting/canonical.sql": "d5a357814af81d8b866320e6281d42102824a9cc28f3b410cb95487a6b048177",
+      "src/nfl_betting/ingest_nflverse.py": "b707b157ff0c08a23a04e18e3f643086c96a85665c7014a9f45ab759588e90f7",
+      "src/nfl_betting/odds_sources.py": "9e627bd19a2071bf276c9fc4f8280d706d4fc7dc35a56b4dee08ffc2829e835f",
+      "src/nfl_betting/pregame.py": "584abd1ded3bdda7b5205041750508e58adea8921f29ca871701265eb9ba91e2",
+      "src/nfl_betting/provenance.py": "cb59b5b24e0ac2284b8d9a38d316f94c98bbb3c43d990e30070a22fbbebfa5e6",
+      "src/nfl_betting/research.py": "8e96e7040cda7092ec44b6560a9938d3fe392f1c7ee3fdb6b6b5df797a1138be",
+      "src/nfl_betting/rules.py": "cfb128987169519fe35550d2e08f7f860de0c202cf5cf7aceb79e4b8504996be",
+      "src/nfl_betting/web_export.py": "9b6bbfb1e06b045f640181ac0b0a8a5a29a48d18df7af8e5226bf254755da789"
+    },
+    "git_commit": "22a6075e4535e80a4bc757ab19735e1ba7e1607f",
+    "worktree_dirty": false
+  },
+  "counts": {
+    "games": 14,
+    "players": 36,
+    "prop_scenarios": 142,
+    "scheduled_games_with_analysis": 1,
+    "verified_quotes": 0
+  },
+  "coverage": [
+    {
+      "fully_covered_result_games": 16.0,
+      "games_with_result": 16.0,
+      "scheduled_games": 16.0,
+      "week": 1
+    },
+    {
+      "fully_covered_result_games": 16.0,
+      "games_with_result": 16.0,
+      "scheduled_games": 16.0,
+      "week": 2
+    },
+    {
+      "fully_covered_result_games": 16.0,
+      "games_with_result": 16.0,
+      "scheduled_games": 16.0,
+      "week": 3
+    },
+    {
+      "fully_covered_result_games": 16.0,
+      "games_with_result": 16.0,
+      "scheduled_games": 16.0,
+      "week": 4
+    },
+    {
+      "fully_covered_result_games": 15.0,
+      "games_with_result": 15.0,
+      "scheduled_games": 15.0,
+      "week": 5
+    },
+    {
+      "fully_covered_result_games": 14.0,
+      "games_with_result": 14.0,
+      "scheduled_games": 14.0,
+      "week": 6
+    },
+    {
+      "fully_covered_result_games": 14.0,
+      "games_with_result": 14.0,
+      "scheduled_games": 14.0,
+      "week": 7
+    },
+    {
+      "fully_covered_result_games": 14.0,
+      "games_with_result": 14.0,
+      "scheduled_games": 14.0,
+      "week": 8
+    },
+    {
+      "fully_covered_result_games": 15.0,
+      "games_with_result": 15.0,
+      "scheduled_games": 15.0,
+      "week": 9
+    },
+    {
+      "fully_covered_result_games": 13.0,
+      "games_with_result": 13.0,
+      "scheduled_games": 14.0,
+      "week": 10
+    },
+    {
+      "fully_covered_result_games": 0.0,
+      "games_with_result": 0.0,
+      "scheduled_games": 13.0,
+      "week": 11
+    },
+    {
+      "fully_covered_result_games": 0.0,
+      "games_with_result": 0.0,
+      "scheduled_games": 16.0,
+      "week": 12
+    },
+    {
+      "fully_covered_result_games": 0.0,
+      "games_with_result": 0.0,
+      "scheduled_games": 14.0,
+      "week": 13
+    },
+    {
+      "fully_covered_result_games": 0.0,
+      "games_with_result": 0.0,
+      "scheduled_games": 15.0,
+      "week": 14
+    },
+    {
+      "fully_covered_result_games": 0.0,
+      "games_with_result": 0.0,
+      "scheduled_games": 16.0,
+      "week": 15
+    },
+    {
+      "fully_covered_result_games": 0.0,
+      "games_with_result": 0.0,
+      "scheduled_games": 16.0,
+      "week": 16
+    },
+    {
+      "fully_covered_result_games": 0.0,
+      "games_with_result": 0.0,
+      "scheduled_games": 16.0,
+      "week": 17
+    },
+    {
+      "fully_covered_result_games": 0.0,
+      "games_with_result": 0.0,
+      "scheduled_games": 16.0,
+      "week": 18
+    }
+  ],
+  "cutoff_utc": "2026-11-16T23:00:00+00:00",
+  "database_sha256": "868d8e2429674b5f0ac697a438b69869220661859df3e4be02e4649e87e8a046",
+  "decision": "NO_BET",
+  "financial_approved": false,
+  "limitations": [
+    "Historical frequency is not a calibrated prospective probability.",
+    "Analytical thresholds are not bookmaker offers.",
+    "No official inactive, verified QB starter, routes run, TPRR, YPRR, pressure rate, EPA/dropback, EPA/rush or pace is published.",
+    "No EV ranking is available without a validated model and a verified, temporally valid quote."
+  ],
+  "pending_identity_audit_rows": 2619,
+  "published_at_utc": "2026-11-17T19:55:17.971429+00:00",
+  "schema_version": "1.1.0",
+  "season": 2026,
+  "source_attribution": {
+    "canonical": "NFLverse datasets through nflreadpy; see docs/DATA_SOURCES.md for dataset licences and attribution.",
+    "odds": "No odds feed is published in this snapshot."
+  },
+  "source_manifest_sha256": "713220723b490f528da325a61c3e17a3fc1d6fbc1a448416018df88526a08dc8",
+  "source_snapshot_id": "20261116T223417.397919Z-bad6b6c4485f4a3a8e7f08f03e046808",
+  "source_snapshot_status": "PARTIAL",
+  "statistical_model_approved": false,
+  "status": "PARTIAL",
+  "temporal_mode": "FROZEN_SNAPSHOT_AS_OF_CUTOFF",
+  "week": 10
+}
