@@ -8,34 +8,39 @@ scenarios and are labelled as such in every record.
 from __future__ import annotations
 
 import argparse
-from collections import defaultdict
+from collections import Counter
 from datetime import datetime, timezone
 import hashlib
 import json
 import math
 from pathlib import Path
+import re
 import statistics
 import sys
+from tempfile import NamedTemporaryFile
 
 from .canonical import open_database
 from .provenance import code_identity, sha256
 
 
-SCHEMA_VERSION = "1.1.0"
+SCHEMA_VERSION = "1.3.0"
 POSITIONS = {"QB", "RB", "WR", "TE"}
 MARKETS = {
-    "receptions": "receptions",
-    "receiving_yards": "rec_yards",
-    "rushing_yards": "rush_yards",
-    "offensive_td": "anytime_td",
+    "receptions": ("receptions", "weekly_receptions", POSITIONS - {"QB"}),
+    "rec_yards": ("receiving_yards", "weekly_receiving_yards", POSITIONS - {"QB"}),
+    "rush_yards": ("rushing_yards", "weekly_rushing_yards", POSITIONS),
+    "anytime_td": ("offensive_td", "weekly_offensive_td", POSITIONS),
 }
-GENERATED_FILES = (
-    "games.json",
-    "teams.json",
-    "players.json",
-    "game_analysis.json",
-    "player_props_analysis.json",
-)
+MIN_HISTORY = 3
+UNMATERIALIZED_QB_MARKETS = ("pass_yards", "pass_attempts", "completions")
+ARTIFACTS = {
+    "games.json": ("games", "games"),
+    "teams.json": ("teams", None),
+    "players.json": ("players", "players"),
+    "game_analysis.json": ("game_analysis", "matchups"),
+    "player_props_analysis.json": ("player_props_analysis", "props"),
+    "player_coverage.json": ("player_coverage", "player_coverage"),
+}
 
 
 def _iso(value):
@@ -73,6 +78,12 @@ def parse_cutoff(value: str) -> datetime:
     if parsed.tzinfo is None:
         raise ValueError("cutoff must include a timezone offset")
     return parsed.astimezone(timezone.utc)
+
+
+def _utc(value):
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError("Timestamp must include a timezone offset")
+    return value.astimezone(timezone.utc)
 
 
 def percentile(values, fraction):
@@ -150,32 +161,30 @@ def _weighted(rows, value_field, weight_field):
     ) if pairs else None
 
 
+def _mean(rows, field):
+    values = [row[field] for row in rows if row.get(field) is not None]
+    return statistics.fmean(values) if values else None
+
+
 def _team_window(rows):
-    return {
+    window = {
         "games": len(rows),
         "epa_per_play": _weighted(rows, "epa_per_play", "epa_observations"),
         "success_rate": _weighted(rows, "success_rate", "epa_observations"),
-        "offensive_plays_per_game": statistics.fmean(
-            float(r["offensive_plays"]) for r in rows
-        ) if rows else None,
-        "pass_attempts_per_game": statistics.fmean(
-            float(r["pass_attempts"]) for r in rows
-        ) if rows else None,
-        "rush_attempts_per_game": statistics.fmean(
-            float(r["rush_attempts"]) for r in rows
-        ) if rows else None,
-        "dropbacks_per_game": statistics.fmean(
-            float(r["dropbacks"]) for r in rows
-        ) if rows else None,
+        "offensive_plays_per_game": _mean(rows, "offensive_plays"),
+        "pass_attempts_per_game": _mean(rows, "pass_attempts"),
+        "rush_attempts_per_game": _mean(rows, "rush_attempts"),
+        "dropbacks_per_game": _mean(rows, "dropbacks"),
         "epa_dropback": None,
         "epa_rush": None,
         "pace_seconds_per_play": None,
-        "unavailable_metrics": [
-            "epa_dropback",
-            "epa_rush",
-            "pace_seconds_per_play",
-        ],
     }
+    not_materialized = {"epa_dropback", "epa_rush", "pace_seconds_per_play"}
+    window["unavailable_metrics"] = {
+        field: "NOT_MATERIALIZED" if field in not_materialized else "NO_COMPLETE_OBSERVATIONS"
+        for field, value in window.items() if value is None
+    }
+    return window
 
 
 def _rows(con, query, params=()):
@@ -192,160 +201,168 @@ def _metric_source(table, columns):
     }
 
 
-def _games(con, season, week, cutoff):
+def _games(con, season, week, cutoff, snapshot):
     return _rows(
         con,
         """
         SELECT game_id,season,season_type,week,kickoff_utc,home_team,away_team,
-               home_score,away_score,has_result,completion_basis,source_snapshot_id,
-               available_at
+               home_score,away_score,has_result,available_at
         FROM games
         WHERE season=? AND season_type='REG' AND week=? AND available_at<=?
-        ORDER BY kickoff_utc,game_id
+          AND source_snapshot_id=?
+        ORDER BY kickoff_utc NULLS LAST,game_id
         """,
-        [season, week, cutoff],
+        [season, week, cutoff, snapshot],
     )
 
 
-def _team_history(con, season, team, kickoff, cutoff):
+def _history_games(con, season, cutoff, snapshot):
+    # A calendar score alone does not prove complete play-by-play.
+    con.execute(
+        """
+        CREATE OR REPLACE TEMP TABLE web_history_games AS
+        SELECT g.game_id, g.season, g.season_type, g.week, g.home_team, g.away_team,
+               g.kickoff_utc, greatest(g.available_at, completion.available_at) AS available_at,
+               g.source_snapshot_id
+        FROM games g
+        JOIN (
+            SELECT game_id,season,season_type,week,source_snapshot_id,min(available_at) AS available_at
+            FROM coverage_audit WHERE has_end_marker AND available_at<=?
+            GROUP BY game_id,season,season_type,week,source_snapshot_id
+        ) completion USING (game_id,season,season_type,week,source_snapshot_id)
+        WHERE g.season=? AND g.season_type='REG' AND g.source_snapshot_id=?
+          AND g.available_at<=? AND g.kickoff_utc<?
+          AND g.has_result AND g.home_score IS NOT NULL AND g.away_score IS NOT NULL
+        """,
+        [cutoff, season, snapshot, cutoff, cutoff],
+    )
+
+
+def _team_history(con, team, cutoff):
     return _rows(
         con,
         """
-        SELECT tw.week,tw.game_id,tw.offensive_plays,tw.pass_attempts,
-               tw.rush_attempts,tw.dropbacks,tw.epa_per_play,
-               tw.epa_observations,tw.success_rate,g.kickoff_utc
-        FROM team_week tw JOIN games g USING(game_id)
-        WHERE tw.season=? AND tw.season_type='REG' AND tw.team=?
-          AND tw.available_at<=? AND g.available_at<=? AND g.has_result
-          AND g.kickoff_utc<?
+        SELECT tw.offensive_plays,tw.pass_attempts,tw.rush_attempts,tw.dropbacks,
+               tw.epa_per_play,tw.epa_observations,tw.success_rate
+        FROM team_week tw JOIN web_history_games g
+          USING(game_id,season,season_type,week,source_snapshot_id)
+        WHERE tw.team=? AND tw.team IN (g.home_team,g.away_team) AND tw.available_at<=?
         ORDER BY g.kickoff_utc,tw.game_id
         """,
-        [season, team, cutoff, cutoff, kickoff],
+        [team, cutoff],
     )
 
 
-def _defense_history(con, season, defense, position, kickoff, cutoff):
+def _defense_history(con, defense, cutoff):
     rows = _rows(
         con,
         """
-        SELECT dm.game_id,dm.targets,dm.receptions,dm.receiving_yards,g.kickoff_utc
-        FROM defensive_matchups dm JOIN games g USING(game_id)
-        WHERE dm.season=? AND dm.season_type='REG' AND dm.defense=?
-          AND dm.position=? AND dm.available_at<=? AND g.available_at<=?
-          AND g.has_result AND g.kickoff_utc<?
-        ORDER BY g.kickoff_utc,dm.game_id
+        SELECT dm.position,count(*) AS games_with_position_events,
+               avg(dm.targets) AS targets_allowed_per_game,
+               avg(dm.receptions) AS receptions_allowed_per_game,
+               avg(dm.receiving_yards) AS receiving_yards_allowed_per_game
+        FROM defensive_matchups dm JOIN web_history_games g
+          USING(game_id,season,season_type,week,source_snapshot_id)
+        WHERE dm.defense=? AND dm.defense IN (g.home_team,g.away_team)
+          AND dm.position IN ('RB','WR','TE') AND dm.available_at<=?
+        GROUP BY dm.position ORDER BY dm.position
         """,
-        [season, defense, position, cutoff, cutoff, kickoff],
+        [defense, cutoff],
     )
     return {
-        "position": position,
-        "games_with_position_events": len(rows),
-        "targets_allowed_per_game": statistics.fmean(
-            float(r["targets"]) for r in rows
-        ) if rows else None,
-        "receptions_allowed_per_game": statistics.fmean(
-            float(r["receptions"]) for r in rows
-        ) if rows else None,
-        "receiving_yards_allowed_per_game": statistics.fmean(
-            float(r["receiving_yards"]) for r in rows
-        ) if rows else None,
-        "scope_note": "Position aggregate; not an individual defender matchup or opponent-adjusted model.",
+        row["position"]: {
+            **row,
+            "scope_note": "Position aggregate; not an individual defender matchup or opponent-adjusted model.",
+        }
+        for row in rows
     }
 
 
-def _candidate_roster(con, game, cutoff):
+def _weekly_roster(con, season, week, cutoff, snapshot):
+    # Use the selected week's canonical roster association, not target statistics.
     return _rows(
         con,
         """
-        SELECT team,player_id,display_name,roster_position,roster_status,
-               participation,source_snapshot_id
-        FROM player_week
-        WHERE season=? AND season_type='REG' AND week=?
-          AND team IN (?,?) AND player_id IS NOT NULL
-          AND roster_position IN ('QB','RB','WR','TE') AND available_at<=?
-        ORDER BY team,roster_position,display_name,player_id
+        SELECT team,player_id,display_name,position,roster_status,
+               count(*) OVER (PARTITION BY player_id) AS id_rows
+        FROM player_crosswalk
+        WHERE season=? AND season_type='REG' AND week=? AND available_at<=?
+          AND source_snapshot_id=?
+        ORDER BY team,position,player_id
         """,
-        [
-            game["season"],
-            game["week"],
-            game["away_team"],
-            game["home_team"],
-            cutoff,
-        ],
+        [season, week, cutoff, snapshot],
     )
 
 
-def _player_history(con, season, team, player_id, kickoff, cutoff):
+def _player_history(con, player_id, cutoff):
     return _rows(
         con,
         """
-        SELECT pw.week,pw.game_id,pw.receptions,pw.receiving_yards,
+        SELECT pw.week,pw.game_id,pw.team,pw.receptions,pw.receiving_yards,
                pw.rushing_yards,pw.offensive_td,pw.targets,pw.carries,
-               pw.offense_snaps,pw.offensive_snap_share,pw.participation,
-               pw.opportunity_basis,g.kickoff_utc
-        FROM player_week pw JOIN games g USING(game_id)
-        WHERE pw.season=? AND pw.season_type='REG' AND pw.team=?
-          AND pw.player_id=? AND pw.available_at<=? AND g.available_at<=?
-          AND g.has_result AND g.kickoff_utc<?
-          AND pw.opportunity_basis='COMPLETE_PBP_OBSERVATION'
+               pw.weekly_receptions,pw.weekly_receiving_yards,pw.weekly_rushing_yards,
+               pw.weekly_receiving_tds + pw.weekly_rushing_tds AS weekly_offensive_td,
+               pw.offensive_snap_share,g.kickoff_utc,
+               greatest(pw.available_at,g.available_at) AS available_at
+        FROM player_week pw JOIN web_history_games g
+          USING(game_id,season,season_type,week,source_snapshot_id)
+        WHERE pw.player_id=? AND pw.team IN (g.home_team,g.away_team)
+          AND pw.available_at<=? AND pw.opportunity_basis='COMPLETE_PBP_OBSERVATION'
           AND pw.participation IN (
-              'OPPORTUNITIES_RECORDED','OFFENSIVE_SNAPS_ZERO_OPPORTUNITIES'
+              'OPPORTUNITIES_RECORDED','OFFENSIVE_SNAPS_ZERO_OPPORTUNITIES',
+              'LATERAL_TOUCH_RECORDED'
           )
+        -- Ambiguity within a historical game cannot count as a second observation.
+        QUALIFY count(*) OVER (PARTITION BY pw.game_id)=1
         ORDER BY g.kickoff_utc,pw.game_id
         """,
-        [season, team, player_id, cutoff, cutoff, kickoff],
+        [player_id, cutoff],
     )
 
 
-def _red_zone(con, season, player_id, kickoff, cutoff):
-    row = con.execute(
+def _red_zone(con, player_id, history, cutoff):
+    return _rows(
+        con,
         """
         SELECT
-          count(*) FILTER(WHERE yardline_100<=20) red_zone_opportunities,
-          count(*) FILTER(WHERE yardline_100<=5) goal_line_opportunities,
-          count(*) FILTER(WHERE yardline_100<=20 AND opportunity_type='TARGET') red_zone_targets,
-          count(*) FILTER(WHERE yardline_100<=20 AND opportunity_type='CARRY') red_zone_carries
-        FROM offensive_opportunities o JOIN games g USING(game_id)
-        WHERE o.season=? AND o.season_type='REG' AND o.player_id=?
-          AND o.classification='STANDARD' AND o.available_at<=?
-          AND g.available_at<=? AND g.has_result AND g.kickoff_utc<?
+          CASE WHEN count(yardline_100)=count(*) AND count(*)>0
+               THEN count(*) FILTER (WHERE yardline_100<=20) END AS red_zone_opportunities,
+          CASE WHEN count(yardline_100)=count(*) AND count(*)>0
+               THEN count(*) FILTER (WHERE yardline_100<=5) END AS goal_line_opportunities,
+          CASE WHEN count(yardline_100)=count(*) AND count(*)>0
+               THEN count(*) FILTER (WHERE yardline_100<=20 AND opportunity_type='TARGET') END AS red_zone_targets,
+          CASE WHEN count(yardline_100)=count(*) AND count(*)>0
+               THEN count(*) FILTER (WHERE yardline_100<=20 AND opportunity_type='RUSH') END AS red_zone_carries
+        FROM offensive_opportunities o JOIN web_history_games g
+          USING(game_id,season,season_type,week,source_snapshot_id)
+        JOIN (SELECT unnest(?) AS game_id, unnest(?) AS team) h
+          ON o.game_id=h.game_id AND o.team=h.team
+        WHERE o.player_id=? AND o.classification='STANDARD'
+          AND o.opportunity_type IN ('TARGET','RUSH') AND o.available_at<=?
         """,
-        [season, player_id, cutoff, cutoff, kickoff],
-    ).fetchone()
-    return dict(
-        zip(
-            (
-                "red_zone_opportunities",
-                "goal_line_opportunities",
-                "red_zone_targets",
-                "red_zone_carries",
-            ),
-            row,
-        )
-    )
+        [[row["game_id"] for row in history], [row["team"] for row in history], player_id, cutoff],
+    )[0]
 
 
 def _volume(history, red_zone):
-    def mean(field):
-        values = [float(r[field]) for r in history if r.get(field) is not None]
-        return statistics.fmean(values) if values else None
-
-    return {
+    volume = {
         "games": len(history),
-        "targets_per_game": mean("targets"),
-        "receptions_per_game": mean("receptions"),
-        "carries_per_game": mean("carries"),
-        "offensive_snap_share_mean": mean("offensive_snap_share"),
-        "offensive_snap_share_last3_mean": statistics.fmean(
-            float(r["offensive_snap_share"])
-            for r in history[-3:]
-            if r.get("offensive_snap_share") is not None
-        ) if any(r.get("offensive_snap_share") is not None for r in history[-3:]) else None,
+        "targets_per_game": _mean(history, "targets"),
+        "receptions_per_game": _mean(history, "receptions"),
+        "carries_per_game": _mean(history, "carries"),
+        "offensive_snap_share_mean": _mean(history, "offensive_snap_share"),
+        "offensive_snap_share_last3_mean": _mean(history[-3:], "offensive_snap_share"),
         **red_zone,
         "routes_run": None,
         "tprr": None,
         "yprr": None,
     }
+    not_materialized = {"routes_run", "tprr", "yprr"}
+    volume["unavailable_metrics"] = {
+        field: "NOT_MATERIALIZED" if field in not_materialized else "NO_COMPLETE_OBSERVATIONS"
+        for field, value in volume.items() if value is None
+    }
+    return volume
 
 
 def _quality(history):
@@ -367,55 +384,70 @@ def _quality(history):
     }
 
 
-def _prop_records(con, game, cutoff, defense_context):
-    records, player_records = [], []
-    roster = _candidate_roster(con, game, cutoff)
+def _observations(history, field, weekly_field):
+    values = []
+    for row in history:
+        source = field if row[field] is not None else weekly_field
+        value = row[source]
+        if value is not None and math.isfinite(value):
+            values.append({
+                "value": value,
+                "week": row["week"],
+                "game_id": row["game_id"],
+                "team": row["team"],
+                "kickoff_utc": _iso(row["kickoff_utc"]),
+                "available_at_utc": _iso(row["available_at"]),
+                "source_field": source,
+            })
+    return values
+
+
+def _prop_records(con, game, cutoff, defense_context, roster, histories):
+    records, player_records, coverage = [], [], []
     for player in roster:
-        history = _player_history(
-            con,
-            game["season"],
-            player["team"],
-            player["player_id"],
-            game["kickoff_utc"],
-            cutoff,
-        )
-        if not history:
-            continue
-        red_zone = _red_zone(
-            con, game["season"], player["player_id"], game["kickoff_utc"], cutoff
-        )
+        player_id = player["player_id"]
+        if player_id not in histories:
+            histories[player_id] = _player_history(con, player_id, cutoff)
+        history = histories[player_id]
         quality = _quality(history)
         opponent = (
             game["home_team"] if player["team"] == game["away_team"]
             else game["away_team"]
         )
-        player_records.append(
-            {
-                "player_id": player["player_id"],
-                "display_name": player["display_name"],
-                "team": player["team"],
-                "position": player["roster_position"],
-                "game_id": game["game_id"],
-                "roster_status": player["roster_status"],
-                "availability_status": "UNVERIFIED",
-                "availability_note": "Weekly roster is not official inactive confirmation.",
-                "quality": quality,
-            }
+        profile = {
+            "player_id": player_id,
+            "display_name": player["display_name"],
+            "team": player["team"],
+            "position": player["position"],
+            "game_id": game["game_id"],
+            "roster_status": player["roster_status"],
+            "availability_status": "UNVERIFIED",
+            "availability_note": "Weekly roster is not official inactive confirmation.",
+            "quality": quality,
+        }
+        market_coverage = (
+            {market: {"n": None, "status": "NOT_MATERIALIZED"} for market in UNMATERIALIZED_QB_MARKETS}
+            if player["position"] == "QB" else {}
         )
-        for source_field, market in MARKETS.items():
-            if market == "receptions" and player["roster_position"] not in {"RB", "WR", "TE"}:
+        volume = None
+        for market, (source_field, weekly_field, positions) in MARKETS.items():
+            if player["position"] not in positions:
+                market_coverage[market] = {"n": None, "status": "NOT_APPLICABLE_POSITION"}
                 continue
-            if market == "rec_yards" and player["roster_position"] not in {"RB", "WR", "TE"}:
+            values = _observations(history, source_field, weekly_field)
+            n = len(values)
+            if n < MIN_HISTORY:
+                reason = (
+                    "NO_CONFIRMED_OFFENSIVE_HISTORY" if not history else
+                    "NO_METRIC_OBSERVATIONS" if n == 0 else "INSUFFICIENT_OBSERVATIONS"
+                )
+                market_coverage[market] = {"n": n, "status": reason}
                 continue
-            if market == "rush_yards" and player["roster_position"] not in {"QB", "RB", "WR"}:
-                continue
-            values = [
-                {"value": row[source_field], "week": row["week"], "game_id": row["game_id"]}
-                for row in history
-                if row[source_field] is not None
-            ]
-            if len(values) < 3:
-                continue
+            market_coverage[market] = {"n": n, "status": "AVAILABLE"}
+            if volume is None:
+                volume = _volume(history, _red_zone(con, player_id, history, cutoff))
+            observed_ids = {item["game_id"] for item in values}
+            market_quality = _quality([row for row in history if row["game_id"] in observed_ids])
             raw_values = [item["value"] for item in values]
             for line in analytical_thresholds(raw_values, market):
                 anytime = market == "anytime_td"
@@ -432,6 +464,8 @@ def _prop_records(con, game, cutoff, defense_context):
                 ]
                 if len(values) < 6:
                     against.append("Amostra curta: menos de seis observações elegíveis.")
+                if any(item["team"] != player["team"] for item in values):
+                    against.append("A amostra inclui outra equipe e não confirma estabilidade de função.")
                 if last3 and season_dist and abs(last3["historical_frequency"] - season_dist["historical_frequency"]) >= 0.34:
                     against.append("Recorrência recente difere materialmente da temporada.")
                 record = {
@@ -441,7 +475,7 @@ def _prop_records(con, game, cutoff, defense_context):
                     "player_name": player["display_name"],
                     "team": player["team"],
                     "opponent": opponent,
-                    "position": player["roster_position"],
+                    "position": player["position"],
                     "market": market,
                     "side": "yes" if anytime else "over",
                     "line": line,
@@ -452,9 +486,9 @@ def _prop_records(con, game, cutoff, defense_context):
                         "last3": last3,
                         "observations": values,
                     },
-                    "volume": _volume(history, red_zone),
+                    "volume": volume,
                     "context": {
-                        "defense_vs_position": defense_context[opponent].get(player["roster_position"]),
+                        "defense_vs_position": defense_context[opponent].get(player["position"]),
                         "quarterback_status": "UNVERIFIED",
                         "role_stability": "DESCRIPTIVE_ONLY",
                         "game_script": "NOT_MODELED",
@@ -464,7 +498,7 @@ def _prop_records(con, game, cutoff, defense_context):
                         "weakens": against,
                         "summary": "Hipótese exploratória baseada somente na distribuição histórica observada.",
                     },
-                    "quality": quality,
+                    "quality": market_quality,
                     "eligibility": {
                         "status": "UNVERIFIED",
                         "roster_status": player["roster_status"],
@@ -481,11 +515,21 @@ def _prop_records(con, game, cutoff, defense_context):
                     "classification": "DATA_INSUFFICIENT_FOR_FINANCIAL_DECISION",
                     "decision": "NO_BET",
                     "sources": [
-                        _metric_source("player_week", [source_field, "targets", "carries", "offensive_snap_share"]),
+                        _metric_source("player_week", [source_field, *(
+                            ("weekly_receiving_tds", "weekly_rushing_tds") if anytime else (weekly_field,)
+                        ), "targets", "carries", "offensive_snap_share"]),
                         _metric_source("offensive_opportunities", ["yardline_100", "classification"]),
                     ],
                 }
                 records.append(record)
+        coverage.append({
+            "player_id": player_id, "display_name": player["display_name"],
+            "team": player["team"], "position": player["position"],
+            "game_id": game["game_id"], "offensive_history_games": len(history),
+            "markets": market_coverage,
+        })
+        if volume is not None:
+            player_records.append(profile)
     records.sort(
         key=lambda r: (
             -r["quality"]["evidence_completeness_score"],
@@ -494,99 +538,170 @@ def _prop_records(con, game, cutoff, defense_context):
             -1 if r["line"] is None else r["line"],
         )
     )
-    return records, player_records
+    return records, player_records, coverage
+
+
+def _game_status(game, cutoff):
+    kickoff = game["kickoff_utc"]
+    if kickoff is None:
+        return "UNKNOWN"
+    if kickoff > cutoff:
+        return "SCHEDULED_AT_CUTOFF" if game["has_result"] is False else "UNKNOWN"
+    if kickoff < cutoff and game["has_result"] and game["home_score"] is not None and game["away_score"] is not None:
+        return "RESULT_RECORDED"
+    return "STARTED_STATUS_UNKNOWN"
+
+
+def _game_analysis(con, game, cutoff):
+    team_metrics, defense_context = {}, {}
+    for team in (game["away_team"], game["home_team"]):
+        history = _team_history(con, team, cutoff)
+        team_metrics[team] = {
+            "season": _team_window(history),
+            "last5": _team_window(history[-5:]),
+            "last3": _team_window(history[-3:]),
+            "source": _metric_source(
+                "team_week",
+                ["epa_per_play", "success_rate", "offensive_plays", "pass_attempts", "rush_attempts", "dropbacks"],
+            ),
+        }
+        defense_context[team] = _defense_history(con, team, cutoff)
+    if not any(windows["season"]["games"] for windows in team_metrics.values()) and not any(defense_context.values()):
+        return None, defense_context
+    return {
+        "game_id": game["game_id"],
+        "cutoff_utc": _iso(cutoff),
+        "teams": team_metrics,
+        "defense_vs_position": defense_context,
+        "quarterbacks": {team: "UNVERIFIED" for team in team_metrics},
+        "verified_injuries": [],
+        "injury_note": "O roster semanal não confirma titulares ou inativos oficiais.",
+        "summary": "Comparação descritiva de jogos concluídos e disponíveis até o cutoff. EPA por dropback, EPA por corrida e pace oficial não estão materializados.",
+        "decision": "NO_BET",
+    }, defense_context
+
+
+def _game_coverage(con, game, status, cutoff, roster, histories):
+    coverage = {
+        "matchup_status": "KICKOFF_UNAVAILABLE" if game["kickoff_utc"] is None else "PREGAME_NOT_VERIFIABLE",
+        "props_status": "KICKOFF_UNAVAILABLE" if game["kickoff_utc"] is None else "PREGAME_NOT_VERIFIABLE",
+        "roster_teams": None,
+        "unresolved_roster_rows": None,
+        "roster_candidates": None,
+        "players_with_props": 0,
+        "prop_scenarios": 0,
+    }
+    if status != "SCHEDULED_AT_CUTOFF":
+        return coverage, None, [], [], []
+
+    matchup, defense = _game_analysis(con, game, cutoff)
+    coverage["matchup_status"] = "AVAILABLE" if matchup else "NO_COMPLETE_TEAM_HISTORY"
+    game_roster = [p for p in roster if p["team"] in (game["away_team"], game["home_team"])]
+    offensive = [p for p in game_roster if p["position"] in POSITIONS]
+    resolved = [p for p in offensive if p["player_id"] and p["id_rows"] == 1]
+    props, players, diagnostics = _prop_records(con, game, cutoff, defense, resolved, histories)
+    roster_teams = sorted({player["team"] for player in game_roster})
+    if props:
+        complete = len(roster_teams) == 2 and len(resolved) == len(offensive) and all(
+            item["status"] in {"AVAILABLE", "NOT_APPLICABLE_POSITION"}
+            for player in diagnostics for item in player["markets"].values()
+        )
+        reason = "AVAILABLE" if complete else "PARTIAL"
+    elif not game_roster:
+        reason = "NO_WEEKLY_ROSTER"
+    elif not resolved:
+        reason = "NO_RESOLVED_OFFENSIVE_ROSTER"
+    else:
+        reason = "INSUFFICIENT_PLAYER_COVERAGE"
+    coverage.update(
+        props_status=reason, roster_teams=roster_teams, roster_candidates=len(resolved),
+        unresolved_roster_rows=len(offensive) - len(resolved),
+        players_with_props=len(players), prop_scenarios=len(props),
+    )
+    return coverage, matchup, props, players, diagnostics
 
 
 def build_export(con, manifest, *, season, week, cutoff, published_at):
-    games = _games(con, season, week, cutoff)
+    snapshot = manifest["source_snapshot_id"]
+    games = _games(con, season, week, cutoff, snapshot)
     if not games:
         raise ValueError("No games are available for season/week at the cutoff")
-    game_items = []
-    analyses = []
-    all_props, all_players = [], []
+    _history_games(con, season, cutoff, snapshot)
+    roster = _weekly_roster(con, season, week, cutoff, snapshot)
+    game_items, analyses, all_props, all_players, player_coverage = [], [], [], [], []
+    histories = {}
     for game in games:
-        status = "FINAL" if game["has_result"] else "SCHEDULED_AT_CUTOFF"
-        game_items.append(
-            {
-                "game_id": game["game_id"],
-                "season": game["season"],
-                "week": game["week"],
-                "away_team": game["away_team"],
-                "home_team": game["home_team"],
-                "kickoff_utc": _iso(game["kickoff_utc"]),
-                "status": status,
-                "away_score": game["away_score"],
-                "home_score": game["home_score"],
-                "status_source": "canonical.games.has_result",
-            }
+        status = _game_status(game, cutoff)
+        coverage, matchup, props, players, diagnostics = _game_coverage(
+            con, game, status, cutoff, roster, histories
         )
-        if status != "SCHEDULED_AT_CUTOFF" or game["kickoff_utc"] <= cutoff:
-            continue
-        team_metrics = {}
-        defense_context = defaultdict(dict)
-        for team in (game["away_team"], game["home_team"]):
-            history = _team_history(con, season, team, game["kickoff_utc"], cutoff)
-            team_metrics[team] = {
-                "season": _team_window(history),
-                "last5": _team_window(history[-5:]),
-                "last3": _team_window(history[-3:]),
-                "source": _metric_source(
-                    "team_week",
-                    ["epa_per_play", "success_rate", "offensive_plays", "pass_attempts", "rush_attempts", "dropbacks"],
-                ),
-            }
-            for position in ("RB", "WR", "TE"):
-                defense_context[team][position] = _defense_history(
-                    con, season, team, position, game["kickoff_utc"], cutoff
-                )
-        analyses.append(
-            {
-                "game_id": game["game_id"],
-                "cutoff_utc": _iso(cutoff),
-                "teams": team_metrics,
-                "defense_vs_position": dict(defense_context),
-                "quarterbacks": {game["away_team"]: "UNVERIFIED", game["home_team"]: "UNVERIFIED"},
-                "verified_injuries": [],
-                "injury_note": "Canonical weekly injuries lack individual publication timestamps and do not confirm official inactives.",
-                "summary": "Comparação descritiva baseada em jogos concluídos e disponíveis antes do kickoff-alvo. EPA/dropback, EPA/rush, pace oficial, QBs titulares e inativos verificados não estão disponíveis neste export.",
-                "decision": "NO_BET",
-            }
-        )
-        props, players = _prop_records(con, game, cutoff, defense_context)
+        game_items.append({
+            "game_id": game["game_id"],
+            "season": game["season"],
+            "week": game["week"],
+            "away_team": game["away_team"],
+            "home_team": game["home_team"],
+            "kickoff_utc": _iso(game["kickoff_utc"]),
+            "available_at_utc": _iso(game["available_at"]),
+            "status": status,
+            "away_score": game["away_score"] if status == "RESULT_RECORDED" else None,
+            "home_score": game["home_score"] if status == "RESULT_RECORDED" else None,
+            "status_source": "canonical.games",
+            "coverage": coverage,
+        })
+        if matchup:
+            analyses.append(matchup)
         all_props.extend(props)
         all_players.extend(players)
+        player_coverage.extend(diagnostics)
     teams = _rows(
         con,
-        "SELECT season,team,source_snapshot_id FROM teams WHERE season=? AND available_at<=? ORDER BY team",
-        [season, cutoff],
+        """
+        SELECT season,team,source_snapshot_id FROM teams
+        WHERE season=? AND available_at<=? AND source_snapshot_id=? ORDER BY team
+        """,
+        [season, cutoff, snapshot],
     )
-    unique_players = {p["player_id"]: p for p in all_players}
+    eligible = [game for game in game_items if game["status"] == "SCHEDULED_AT_CUTOFF"]
+    counts = {
+        "games": len(game_items),
+        "scheduled_games_at_cutoff": len(eligible),
+        "scheduled_games_with_analysis": len(analyses),
+        "games_with_props": sum(game["coverage"]["prop_scenarios"] > 0 for game in eligible),
+        "players": len({p["player_id"] for p in all_players}),
+        "players_assessed": len({p["player_id"] for p in player_coverage}),
+        "prop_scenarios": len(all_props),
+        "verified_quotes": 0,
+    }
+    complete = bool(eligible) and manifest["status"] == "OK" and all(
+        game["coverage"]["matchup_status"] == "AVAILABLE"
+        and game["coverage"]["props_status"] == "AVAILABLE" for game in eligible
+    )
     metadata = {
         "schema_version": SCHEMA_VERSION,
-        "status": "PARTIAL" if manifest["status"] != "OK" or not analyses else "READY_DESCRIPTIVE_ONLY",
+        "status": "READY_DESCRIPTIVE_ONLY" if complete else "PARTIAL",
         "decision": "NO_BET",
         "financial_approved": False,
         "statistical_model_approved": False,
         "season": season,
+        "season_type": "REG",
         "week": week,
         "cutoff_utc": _iso(cutoff),
         "published_at_utc": _iso(published_at),
         "temporal_mode": "FROZEN_SNAPSHOT_AS_OF_CUTOFF",
-        "source_snapshot_id": manifest["source_snapshot_id"],
+        "source_snapshot_id": snapshot,
         "source_snapshot_status": manifest["status"],
+        "source_available_at_utc": _iso(max(game["available_at"] for game in games)),
         "database_sha256": manifest["database"]["sha256"],
         "source_manifest_sha256": manifest["source_manifest_sha256"],
-        "build_manifest_sha256": None,
         "code": code_identity(),
-        "coverage": manifest.get("coverage_by_week", []),
-        "pending_identity_audit_rows": manifest.get("pending_audit_rows"),
-        "counts": {
-            "games": len(game_items),
-            "scheduled_games_with_analysis": len(analyses),
-            "players": len(unique_players),
-            "prop_scenarios": len(all_props),
-            "verified_quotes": 0,
+        "coverage": {
+            "game_status_counts": dict(Counter(game["status"] for game in game_items)),
+            "prop_coverage_counts": dict(Counter(game["coverage"]["props_status"] for game in game_items)),
+            "minimum_player_observations_per_market": MIN_HISTORY,
         },
+        "pending_identity_audit_rows": manifest.get("pending_audit_rows"),
+        "counts": counts,
         "source_attribution": {
             "canonical": "NFLverse datasets through nflreadpy; see docs/DATA_SOURCES.md for dataset licences and attribution.",
             "odds": "No odds feed is published in this snapshot.",
@@ -602,10 +717,167 @@ def build_export(con, manifest, *, season, week, cutoff, published_at):
         "metadata": metadata,
         "games": game_items,
         "teams": teams,
-        "players": sorted(unique_players.values(), key=lambda p: (p["team"], p["position"], p["display_name"] or "")),
+        "players": all_players,
         "game_analysis": analyses,
         "player_props_analysis": all_props,
+        "player_coverage": player_coverage,
     }
+
+
+def _load_json(path):
+    def reject_constant(value):
+        raise ValueError(f"Non-finite JSON number: {value}")
+
+    return json.loads(path.read_text(encoding="utf-8"), parse_constant=reject_constant)
+
+
+def _export_name(snapshot_id, season, week, cutoff):
+    if not isinstance(snapshot_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", snapshot_id):
+        raise ValueError("Invalid canonical source_snapshot_id")
+    stamp = cutoff.strftime("%Y%m%dT%H%M%S%fZ")
+    return f"{snapshot_id}-v{SCHEMA_VERSION}-{season}-REG-W{week:02d}-{stamp}"
+
+
+def validate_export(destination):
+    """Verify the archived bundle and its descriptive-only temporal contract."""
+    destination = Path(destination)
+    metadata = _load_json(destination / "metadata.json")
+    slate = _load_json(destination / "slate.json")
+    cutoff = parse_cutoff(metadata["cutoff_utc"])
+    name = _export_name(metadata["source_snapshot_id"], metadata["season"], metadata["week"], cutoff)
+    if destination.name != name or slate["snapshot_path"] != f"snapshots/{name}/":
+        raise ValueError("Export identity does not match its snapshot path")
+    if (
+        metadata["schema_version"] != SCHEMA_VERSION
+        or metadata["season_type"] != "REG"
+        or type(metadata["week"]) is not int or not 1 <= metadata["week"] <= 18
+        or metadata["source_snapshot_status"] not in {"OK", "PARTIAL"}
+        or any(slate.get(key) != value for key, value in metadata.items())
+        or slate["generated_at_utc"] != metadata["published_at_utc"]
+        or parse_cutoff(metadata["published_at_utc"]) < cutoff
+        or parse_cutoff(metadata["source_available_at_utc"]) > cutoff
+        or set(metadata["artifact_sha256"]) != set(ARTIFACTS)
+    ):
+        raise ValueError("Inconsistent export metadata")
+
+    for filename, (_, slate_key) in ARTIFACTS.items():
+        path = destination / filename
+        if sha256(path) != metadata["artifact_sha256"][filename]:
+            raise ValueError(f"Artifact hash mismatch: {filename}")
+        payload = _load_json(path)
+        if payload["schema_version"] != SCHEMA_VERSION or not isinstance(payload["items"], list):
+            raise ValueError(f"Invalid artifact schema: {filename}")
+        if slate_key and slate[slate_key] != payload["items"]:
+            raise ValueError(f"Slate differs from artifact: {filename}")
+
+    if (
+        slate["decision"] != "NO_BET" or slate["financial_approved"] is not False
+        or slate["statistical_model_approved"] is not False or slate["counts"]["verified_quotes"] != 0
+    ):
+        raise ValueError("Export must remain descriptive and NO_BET")
+    games = {game["game_id"]: game for game in slate["games"]}
+    scheduled = {game_id for game_id, game in games.items() if game["status"] == "SCHEDULED_AT_CUTOFF"}
+    def valid_game(game):
+        if (
+            parse_cutoff(game["available_at_utc"]) > cutoff
+            or game["season"] != slate["season"] or game["week"] != slate["week"]
+        ):
+            return False
+        status = game["status"]
+        kickoff = parse_cutoff(game["kickoff_utc"]) if game["kickoff_utc"] else None
+        scores = (game["home_score"], game["away_score"])
+        if status == "RESULT_RECORDED":
+            return kickoff is not None and kickoff < cutoff and all(score is not None for score in scores)
+        if any(score is not None for score in scores):
+            return False
+        if status == "SCHEDULED_AT_CUTOFF":
+            return kickoff is not None and kickoff > cutoff
+        if status == "STARTED_STATUS_UNKNOWN":
+            return kickoff is not None and kickoff <= cutoff
+        return status == "UNKNOWN"
+
+    if len(games) != len(slate["games"]) or not all(valid_game(game) for game in games.values()):
+        raise ValueError("Invalid game identity, season/week or temporal bounds")
+    matchup_ids = {matchup["game_id"] for matchup in slate["matchups"]}
+
+    def binds_to_game(item):
+        game_id = item["game_id"]
+        return game_id in scheduled and item["team"] in (games[game_id]["away_team"], games[game_id]["home_team"])
+
+    if (
+        len(matchup_ids) != len(slate["matchups"]) or not matchup_ids <= scheduled
+        or any(matchup["cutoff_utc"] != slate["cutoff_utc"] or matchup["decision"] != "NO_BET"
+               for matchup in slate["matchups"])
+        or any(not binds_to_game(item) for key in ("players", "player_coverage", "props") for item in slate[key])
+    ):
+        raise ValueError("Invalid pregame binding")
+    if len({prop["id"] for prop in slate["props"]}) != len(slate["props"]):
+        raise ValueError("Duplicate prop ids")
+    for prop in slate["props"]:
+        observations = prop["history"]["observations"]
+        if (
+            prop["decision"] != "NO_BET" or prop["quote"] is not None or prop["ev"] is not None
+            or prop["model"]["validated"] is not False or prop["model"]["probability"] is not None
+            or len(observations) < MIN_HISTORY or prop["history"]["season"]["n"] != len(observations)
+            or len({row["game_id"] for row in observations}) != len(observations)
+            or any(
+                row["game_id"] == prop["game_id"]
+                or parse_cutoff(row["kickoff_utc"]) >= cutoff
+                or parse_cutoff(row["available_at_utc"]) > cutoff
+                for row in observations
+            )
+        ):
+            raise ValueError(f"Invalid prop evidence or financial state: {prop['id']}")
+    counts = slate["counts"]
+    if (
+        counts["games"] != len(games) or counts["scheduled_games_at_cutoff"] != len(scheduled)
+        or counts["scheduled_games_with_analysis"] != len(matchup_ids)
+        or counts["games_with_props"] != len({prop["game_id"] for prop in slate["props"]})
+        or counts["players"] != len({player["player_id"] for player in slate["players"]})
+        or counts["players_assessed"] != len({player["player_id"] for player in slate["player_coverage"]})
+        or counts["prop_scenarios"] != len(slate["props"])
+    ):
+        raise ValueError("Export counts do not match the bundle")
+    return slate
+
+
+def _safe_output_root(output_root):
+    output_root = Path(output_root).resolve()
+    repo = Path(__file__).resolve().parents[2]
+    protected = [repo / "legacy", *(repo / "data" / name for name in (
+        "processed", "reference", "raw", "raw_auto", "canonical", "snapshots"
+    ))]
+    if any(output_root.is_relative_to(folder) for folder in protected):
+        raise ValueError("Output cannot be inside historical or canonical data")
+    if any(
+        folder.parent.name == "snapshots" and (folder / "metadata.json").is_file()
+        for folder in (output_root, *output_root.parents)
+    ):
+        raise ValueError("Output cannot be inside an archived web snapshot")
+    return output_root
+
+
+def publish_export(destination, output_root):
+    output_root = _safe_output_root(output_root)
+    destination = Path(destination).resolve()
+    if destination.parent != output_root / "snapshots":
+        raise ValueError("Export must be an immediate child of the output snapshots directory")
+    slate = validate_export(destination)
+    # Generation never touches the live pointer. Serialize the short replacement.
+    lock = output_root / ".slate-publish.lock"
+    with lock.open("x"):
+        pass
+    temporary = None
+    try:
+        with NamedTemporaryFile(dir=output_root, prefix=".slate-", delete=False) as handle:
+            temporary = Path(handle.name)
+        _write_json(temporary, slate)
+        temporary.replace(output_root / "slate.json")
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+        lock.unlink()
+    return slate
 
 
 def export_static(
@@ -619,90 +891,92 @@ def export_static(
     publish_current=False,
 ):
     canonical_folder = Path(canonical_folder).resolve()
-    output_root = Path(output_root).resolve()
-    cutoff = cutoff.astimezone(timezone.utc)
-    published_at = (published_at or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    output_root = _safe_output_root(output_root)
+    if output_root.is_relative_to(canonical_folder):
+        raise ValueError("Output cannot be inside the input canonical build")
+    if type(season) is not int or type(week) is not int or not 1 <= week <= 18:
+        raise ValueError("An integer season and regular-season week (1..18) are required")
+    cutoff = _utc(cutoff)
+    published_at = _utc(published_at or datetime.now(timezone.utc))
     manifest_path = canonical_folder / "build_manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if manifest.get("status") == "ERROR":
-        raise ValueError("Canonical build status ERROR")
+    manifest = _load_json(manifest_path)
+    if (
+        manifest["status"] not in {"OK", "PARTIAL"}
+        or manifest["database"]["path"] != "nfl.duckdb"
+        or (canonical_folder / "nfl.duckdb").is_symlink()
+    ):
+        raise ValueError("Unusable canonical build")
     if published_at < cutoff:
         raise ValueError("published_at cannot precede cutoff")
-    with open_database(canonical_folder) as con:
-        payload = build_export(
-            con,
-            manifest,
-            season=season,
-            week=week,
-            cutoff=cutoff,
-            published_at=published_at,
-        )
-    payload["metadata"]["build_manifest_sha256"] = sha256(manifest_path)
-    snapshot_id = manifest["source_snapshot_id"]
-    destination = output_root / "snapshots" / snapshot_id
+    name = _export_name(manifest["source_snapshot_id"], season, week, cutoff)
+    snapshots = output_root / "snapshots"
+    if snapshots.is_symlink() or snapshots.resolve() != snapshots:
+        raise ValueError("Snapshot output directory must be local to the output root")
+    destination = snapshots / name
     if destination.exists():
         raise FileExistsError(f"Snapshot export already exists: {destination}")
+    with open_database(canonical_folder) as con:
+        con.execute("SET enable_external_access=false")
+        payload = build_export(
+            con, manifest, season=season, week=week, cutoff=cutoff, published_at=published_at
+        )
+    metadata = payload["metadata"]
+    metadata["build_manifest_sha256"] = sha256(manifest_path)
+
     destination.mkdir(parents=True)
-    mapping = {
-        "games.json": {"items": payload["games"]},
-        "teams.json": {"items": payload["teams"]},
-        "players.json": {"items": payload["players"]},
-        "game_analysis.json": {"items": payload["game_analysis"]},
-        "player_props_analysis.json": {"items": payload["player_props_analysis"]},
-    }
-    for filename, content in mapping.items():
-        _write_json(destination / filename, {"schema_version": SCHEMA_VERSION, **content})
-    payload["metadata"]["artifact_sha256"] = {
-        name: sha256(destination / name) for name in GENERATED_FILES
-    }
-    _write_json(destination / "metadata.json", payload["metadata"], compact=False)
-    slate = {
-        **payload["metadata"],
-        "generated_at_utc": payload["metadata"]["published_at_utc"],
-        "games": payload["games"],
-        "props": payload["player_props_analysis"],
-        "matchups": payload["game_analysis"],
-        "players": payload["players"],
-        "snapshot_path": f"snapshots/{snapshot_id}/",
-    }
-    _write_json(destination / "slate.json", slate)
+    try:
+        for filename, (payload_key, _) in ARTIFACTS.items():
+            _write_json(destination / filename, {"schema_version": SCHEMA_VERSION, "items": payload[payload_key]})
+        metadata["artifact_sha256"] = {name: sha256(destination / name) for name in ARTIFACTS}
+        _write_json(destination / "metadata.json", metadata, compact=False)
+        slate = {
+            **metadata,
+            "generated_at_utc": metadata["published_at_utc"],
+            "snapshot_path": f"snapshots/{name}/",
+            **{slate_key: payload[key] for key, slate_key in ARTIFACTS.values() if slate_key},
+        }
+        _write_json(destination / "slate.json", slate)
+        validate_export(destination)
+    except Exception:
+        for filename in (*ARTIFACTS, "metadata.json", "slate.json"):
+            (destination / filename).unlink(missing_ok=True)
+        destination.rmdir()
+        raise
     if publish_current:
-        output_root.mkdir(parents=True, exist_ok=True)
-        _write_json(output_root / "slate.json", slate)
+        publish_export(destination, output_root)
     return destination, slate
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--database", required=True, help="Canonical build folder")
+    operation = parser.add_mutually_exclusive_group()
+    operation.add_argument("--validate-export", type=Path, metavar="FOLDER")
+    operation.add_argument("--publish-export", type=Path, metavar="FOLDER")
+    parser.add_argument("--database", help="Canonical build folder")
     parser.add_argument("--output", default="web/public/data")
-    parser.add_argument("--season", type=int, required=True)
-    parser.add_argument("--week", type=int, required=True)
-    parser.add_argument("--cutoff", required=True, help="Aware ISO-8601 cutoff")
+    parser.add_argument("--season", type=int)
+    parser.add_argument("--week", type=int)
+    parser.add_argument("--cutoff", help="Aware ISO-8601 cutoff")
     parser.add_argument("--published-at", help="Aware ISO-8601 publication time")
-    parser.add_argument("--publish-current", action="store_true")
+    parser.add_argument("--publish-current", action="store_true", help="Generate, validate and replace the local current slate")
     args = parser.parse_args(argv)
     try:
-        destination, slate = export_static(
-            args.database,
-            args.output,
-            season=args.season,
-            week=args.week,
-            cutoff=parse_cutoff(args.cutoff),
-            published_at=parse_cutoff(args.published_at) if args.published_at else None,
-            publish_current=args.publish_current,
-        )
-        print(
-            json.dumps(
-                {
-                    "destination": str(destination),
-                    "status": slate["status"],
-                    "counts": slate["counts"],
-                    "decision": slate["decision"],
-                },
-                indent=2,
+        if args.validate_export or args.publish_export:
+            destination = args.validate_export or args.publish_export
+            slate = (publish_export(destination, args.output) if args.publish_export else validate_export(destination))
+        else:
+            if any(value is None for value in (args.database, args.season, args.week, args.cutoff)):
+                parser.error("--database, --season, --week and --cutoff are required to generate")
+            destination, slate = export_static(
+                args.database, args.output, season=args.season, week=args.week,
+                cutoff=parse_cutoff(args.cutoff),
+                published_at=parse_cutoff(args.published_at) if args.published_at else None,
+                publish_current=args.publish_current,
             )
-        )
+        print(json.dumps({
+            "destination": str(destination), "status": slate["status"],
+            "counts": slate["counts"], "decision": slate["decision"],
+        }, indent=2))
         return 0
     except Exception as exc:
         print(f"Web export failed: {type(exc).__name__}: {exc}", file=sys.stderr)

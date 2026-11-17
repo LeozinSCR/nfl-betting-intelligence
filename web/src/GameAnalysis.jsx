@@ -1,6 +1,7 @@
 import React from 'react';
 import { Activity, CircleAlert, Info, UserRoundSearch } from 'lucide-react';
 import { WINDOWS, number, percent, RateBar } from './HistoryPanel.jsx';
+import { coverageReason } from './CoveragePanel.jsx';
 
 const TEAM_METRICS = [
   ['epa_per_play', 'EPA por jogada', (value) => number(value, 3)],
@@ -26,6 +27,8 @@ function TeamPanel({ team, windows }) {
         </td>)}
       </tr>)}</tbody>
     </table>
+    {WINDOWS.some(([window]) => TEAM_METRICS.some(([key]) => windows[window]?.[key] == null)) &&
+      <p className="micro">Indicadores sem amostra completa ficam indisponíveis.</p>}
   </article>;
 }
 
@@ -60,7 +63,7 @@ export default function GameAnalysis({ game, matchup }) {
       </div></div>
     </> : <div className="empty">
       <CircleAlert /><b>Análise pré-jogo indisponível</b>
-      <p>Este snapshot não traz evidências pré-jogo elegíveis para o confronto.</p>
+      <p>{coverageReason(game.coverage?.matchup_status) || 'Este snapshot não traz evidências pré-jogo elegíveis para o confronto.'}</p>
     </div>}
   </section>;
 }

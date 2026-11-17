@@ -1,7 +1,17 @@
 export const EMPTY_DATA = {
-  status: 'UNAVAILABLE', games: [], props: [], matchups: [], players: [],
+  status: 'UNAVAILABLE', games: [], props: [], matchups: [], players: [], player_coverage: [],
   generated_at_utc: null, cutoff_utc: null, decision: 'NO_BET'
 };
+
+export const SNAPSHOT_MAX_AGE_DAYS = 7;
+
+export function snapshotFreshness(data, now = new Date()) {
+  if (!data.source_snapshot_id) return 'UNAVAILABLE';
+  const basis = Date.parse(data.source_available_at_utc ?? data.cutoff_utc);
+  const age = Number(now) - basis;
+  if (!Number.isFinite(age) || age < 0) return 'UNKNOWN';
+  return age >= SNAPSHOT_MAX_AGE_DAYS * 86_400_000 ? 'STALE' : 'WITHIN_WINDOW';
+}
 
 export function validQuote(quote, now = new Date()) {
   if (!quote || typeof quote !== 'object') return false;

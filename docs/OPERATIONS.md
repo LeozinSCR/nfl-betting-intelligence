@@ -58,25 +58,12 @@ Nenhuma ingestão libera modelos. Persistem NO_BET, backtests sem geradores comp
 
 ## Exportação web estática
 
-Depois de selecionar explicitamente um build canônico e conferir seu manifesto:
-
-```bash
-python -m nfl_betting.web_export \
-  --database /CAMINHO/BUILD \
-  --output web/public/data \
-  --season 2026 --week 10 \
-  --cutoff 2026-11-16T23:00:00+00:00 \
-  --publish-current
-cd web && npm ci --no-audit --no-fund && npm test && npm run build
-```
-
-O horário é exemplo do snapshot congelado da Task 6, não um cutoff atual.
-O exportador cria `snapshots/<source_snapshot_id>/` de forma exclusiva e falha
-se a pasta existir. Não apague uma exportação publicada para reescrever seus
-números; publique um novo snapshot. `slate.json` é o ponteiro estático atual e
-deve ser atualizado somente após testes. JSON contém estatísticas derivadas,
-não raw NFLverse/DuckDB nem feed bruto de odds. Sem quote e modelo aprovados,
-EV permanece null e a decisão NO_BET.
+Selecione um build canônico pelo manifesto e siga o fluxo de geração,
+validação e publicação local em [web/README.md](../web/README.md).
+`nfl_betting.web_export` arquiva cada combinação de versão, fonte, rodada e
+cutoff em pasta exclusiva. Depois da validação e dos testes, o operador pode
+atualizar o `slate.json` da raiz. Os arquivos contêm estatísticas derivadas e
+diagnósticos de cobertura. EV permanece null e a decisão é NO_BET.
 
 ## Tarefa 3: construção e reconciliação canônica
 
