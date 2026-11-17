@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0.0",
+  "status": "UNAVAILABLE",
+  "season": 2026,
+  "week": null,
+  "generated_at_utc": null,
+  "source_snapshot_id": null,
+  "cutoff_utc": null,
+  "disclaimer": "Nenhum snapshot publicado foi validado para esta interface. Odds, probabilidades e EV não são inventados.",
+  "games": [],
+  "props": [],
+  "matchups": []
+}
