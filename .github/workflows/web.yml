@@ -1,0 +1,30 @@
+name: Web V1 build
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - '.github/workflows/web.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Install frontend dependencies
+        working-directory: web
+        run: npm install --no-audit --no-fund
+      - name: Compile static site
+        working-directory: web
+        run: npm run build
+      - name: Publish build artifact for review
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: nfl-web-v1-preview
+          path: web/dist/
+          retention-days: 7
