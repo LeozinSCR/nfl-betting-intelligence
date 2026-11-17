@@ -1,4 +1,4 @@
-# NFL Betting Intelligence — Web V1.1
+# NFL Betting Intelligence — Web V1.2
 
 PWA React/Vite estática e responsiva. O frontend lê JSON derivado do catálogo
 canônico; não acessa DuckDB, APIs de odds ou segredos no navegador.
@@ -16,8 +16,20 @@ npm run build
 npm run preview
 ```
 
-`npm test` cobre estado sem odds, filtro mínimo, bloqueio de EV e ordenação por
-completude. O build copia `public/data/` para `dist/data/`.
+`npm test` cobre estado sem odds, filtro mínimo, bloqueio de EV, ordenação por
+completude e filtro por equipe combinado com os demais controles. O build copia
+`public/data/` para `dist/data/`.
+
+## Leitura do dashboard
+
+Os jogos pertencem ao snapshot indicado no topo. Dentro de um confronto, os
+segmentos Geral, visitante e mandante usam os códigos exatos das equipes
+publicadas. A troca de confronto restaura Geral e preserva os outros filtros.
+
+As barras comparam a frequência observada na temporada, nos últimos 5 e nos
+últimos 3 jogos elegíveis, com acertos e tamanho de amostra. No detalhe da prop,
+os gráficos comparam mínimo, P25, mediana, P75 e máximo na escala comum da
+temporada. O painel também exibe P90, volume e proveniência quando disponíveis.
 
 ## Contrato de dados
 
