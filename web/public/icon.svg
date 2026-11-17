@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="NFL Intelligence">
+  <rect width="512" height="512" rx="110" fill="#07101b"/>
+  <path d="M92 360V152h52l70 111 70-111h52v208h-58V246l-64 96-64-96v114z" fill="#76c9f5"/>
+  <path d="M367 152h53v208h-53z" fill="#8ce0c4"/>
+</svg>

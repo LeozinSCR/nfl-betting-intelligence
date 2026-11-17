@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nfl-betting-intelligence"
-version = "0.4.0"
+version = "0.5.0"
 description = "Auditable NFL research tools; no automated betting approval"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
@@ -14,6 +14,7 @@ dependencies = ["nflreadpy==0.1.5", "polars==2.1.0", "pyarrow==26.0.1", "duckdb=
 nfl-research = "nfl_betting.research:main"
 nfl-canonical = "nfl_betting.canonical:main"
 nfl-ingest = "nfl_betting.ingest_nflverse:main"
+nfl-web-export = "nfl_betting.web_export:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

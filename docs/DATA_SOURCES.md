@@ -42,3 +42,19 @@ recorrente não foi adotado após revisão dos termos. Crawlora sem chave retorn
 uma cotação. Sleeper/Stake permanecem com o estado documentado; nenhum novo
 adapter pré-jogo ou cobertura Stake de player props foi demonstrado. Evidências,
 commits, licenças e limites em `TASK4_AGENT_SKILLS_INTEGRATION.md`.
+
+## Revisão da Task 6 — odds gratuitas para o site
+
+Em 17/11/2026 foram revisadas páginas públicas de documentação, pricing e termos,
+sem cadastro, chave ou chamada de odds. PropLine anuncia free contínuo e permite
+exibir valores individuais, mas proíbe redistribuição em massa; permanece
+candidata sem adapter live. ParlayAPI anuncia free sem cartão, mas seus termos
+exigem acordo escrito para site público e derivados: rejeitada para publicação.
+The Odds API anuncia 500 créditos/mês e props NFL com chave; nenhuma resposta
+real foi obtida. FanLine Wire anuncia free REST, demo pública e props NFL/FanDuel,
+mas direitos de exibição pública não ficaram claros o bastante para integração.
+
+`nfl_betting.odds_sources` contém apenas registro fail-closed e normalizador de
+fixtures; todos os providers têm `live_enabled=False`. Nenhuma credencial entra
+no Git/browser, nenhum feed bruto é redistribuído e ausência de API não bloqueia
+as páginas estatísticas. Detalhes e links em `TASK6_WEB_V1_DATA_INTEGRATION.md`.

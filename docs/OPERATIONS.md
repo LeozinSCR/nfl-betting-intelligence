@@ -56,6 +56,28 @@ Na rotina de CI, o checkout é novo e contém uma única coleta. Localmente, dir
 
 Nenhuma ingestão libera modelos. Persistem NO_BET, backtests sem geradores completos, uma previsão conjunta histórica inválida e cobertura não demonstrada de player props Stake. Operação financeira, liquidação, integração Sleeper, crosswalk temporal e atualização do Master exigem trabalho posterior e revisão.
 
+## Exportação web estática
+
+Depois de selecionar explicitamente um build canônico e conferir seu manifesto:
+
+```bash
+python -m nfl_betting.web_export \
+  --database /CAMINHO/BUILD \
+  --output web/public/data \
+  --season 2026 --week 10 \
+  --cutoff 2026-11-16T23:00:00+00:00 \
+  --publish-current
+cd web && npm ci --no-audit --no-fund && npm test && npm run build
+```
+
+O horário é exemplo do snapshot congelado da Task 6, não um cutoff atual.
+O exportador cria `snapshots/<source_snapshot_id>/` de forma exclusiva e falha
+se a pasta existir. Não apague uma exportação publicada para reescrever seus
+números; publique um novo snapshot. `slate.json` é o ponteiro estático atual e
+deve ser atualizado somente após testes. JSON contém estatísticas derivadas,
+não raw NFLverse/DuckDB nem feed bruto de odds. Sem quote e modelo aprovados,
+EV permanece null e a decisão NO_BET.
+
 ## Tarefa 3: construção e reconciliação canônica
 
 `nfl-canonical` / `python -m nfl_betting.canonical` faz a coleta e construção em pastas exclusivas, ou recebe `--snapshot` para reprocessar uma coleta específica. URLs/headers/corpos HTTP são capturados na sessão do loader, sem cache; versões e hashes acompanham o run. Resultados futuros/inconsistência de calendário, chaves duplicadas, identidade ambígua e adulteração de hashes bloqueiam o build. Falha da fonte injuries permite banco vazio tipado e PARTIAL, com diagnóstico; fontes essenciais ausentes resultam ERROR. Exit 2 permanece em erro de coleta ao vivo, mesmo que seja possível preservar um banco parcial.
