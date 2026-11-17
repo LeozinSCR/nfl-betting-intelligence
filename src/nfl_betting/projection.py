@@ -237,25 +237,79 @@ def _audit(players):
     }
 
 
-def _fold(catalog, season, week, cutoff, captures):
+def _histories(players):
+    result = defaultdict(list)
+    for row in players:
+        result[row["team"], row["player_id"]].append(row)
+    return result
+
+
+def _project_game(game, roster, histories, cutoff, snapshot, schedule):
+    game_id = game["game_id"]
+    away, home = game["away_team"], game["home_team"]
+    kickoff = utc(game["kickoff_utc"])
+    game_date = kickoff.astimezone(EASTERN).date()
+    projections = []
+    for player in roster:
+        team, player_id = player["team"], player["player_id"]
+        history = [
+            row for row in histories[team, player_id]
+            if row["game_id"] != game_id and utc(row["kickoff_utc"]) < cutoff
+            and utc(row["kickoff_utc"]).astimezone(EASTERN).date() < game_date
+        ]
+        for key, market in MARKETS.items():
+            if player["position"] not in market.positions:
+                continue
+            projections.append({
+                "game_id": game_id, "week": game["week"], "player_id": player_id, "team": team,
+                "opponent": home if team == away else away,
+                "position": player["position"], "player_name": player["display_name"],
+                "market": key, "game_date_et": game_date.isoformat(),
+                "kickoff_utc": kickoff.isoformat(), "cutoff_utc": cutoff.isoformat(),
+                "feature_snapshot_id": snapshot,
+                "roster_evidence": player["roster_evidence"], "kickoff_evidence": schedule,
+                "availability_status": "UNVERIFIED",
+                "condition": "CONDITIONAL_ON_OFFENSIVE_PARTICIPATION",
+                **forecast_market(key, history),
+                "decision": "NO_BET",
+            })
+    return projections
+
+
+def _game_roster(roster, teams):
+    candidates, excluded = [], []
+    team_roster = [row for team in teams for row in roster if row["team"] == team and row["position"] in OFFENSE]
+    for row in team_roster:
+        reason = row["excluded_reason"]
+        if not row["player_id"]:
+            reason = "MISSING_GSIS"
+        elif not reason and row["id_rows"] != 1:
+            reason = "AMBIGUOUS_GSIS"
+        if reason:
+            excluded.append({"player_id": row["player_id"], "team": row["team"],
+                             "player_name": row["display_name"], "reason": reason})
+        else:
+            candidates.append(row)
+    return candidates, excluded
+
+
+def _fold(catalog, season, week, cutoff, captures, *, game_ids=None, frozen_histories=None):
     snapshot = catalog.manifest["source_snapshot_id"]
     with _connect(catalog.folder) as con:
-        revisions, players = _facts(con, catalog, season, cutoff, captures)
+        if frozen_histories is None:
+            revisions, players = _facts(con, catalog, season, cutoff, captures)
+        else:
+            revisions, players = _kickoff_revisions(con, captures), None
         games = _games(con, season, week, cutoff, snapshot)
         weekly = _weekly_roster(con, season, week, cutoff, catalog.manifest, False)
     roster = select_roster(weekly, captures, week, cutoff, fallback=False)
-    by_team = defaultdict(list)
-    for row in roster:
-        if row["position"] in OFFENSE and row["player_id"] and row["id_rows"] == 1 and not row["excluded_reason"]:
-            by_team[row["team"]].append(row)
-    histories = defaultdict(list)
-    for row in players:
-        row["game_date_et"] = utc(row["kickoff_utc"]).astimezone(EASTERN).date()
-        histories[row["team"], row["player_id"]].append(row)
+    histories = _histories(players) if frozen_histories is None else frozen_histories
 
     projections, diagnostics = [], []
     for game in games:
         game_id = game["game_id"]
+        if game_ids is not None and game_id not in game_ids:
+            continue
         teams = (game["away_team"], game["home_team"])
         schedule = None
         if game_id in revisions:
@@ -263,46 +317,21 @@ def _fold(catalog, season, week, cutoff, captures):
             if not schedule or teams != KICKOFF_TEAMS[game_id]:
                 game["kickoff_conflict"] = True
         status = _game_status(game, cutoff)
-        candidates = []
-        if status == "SCHEDULED_AT_CUTOFF":
-            candidates = by_team[teams[0]] + by_team[teams[1]]
+        candidates, excluded = _game_roster(roster, teams) if status == "SCHEDULED_AT_CUTOFF" else ([], [])
         diagnostics.append({
             "game_id": game_id, "status": status, "candidate_count": len(candidates),
+            "excluded_players": excluded,
         })
-        for player in candidates:
-            team, player_id = player["team"], player["player_id"]
-            kickoff = utc(game["kickoff_utc"])
-            game_date = kickoff.astimezone(EASTERN).date()
-            # The catalog gate already restricts completed games to prior to
-            # cutoff. Also keep training outside the target date and game.
-            history = [
-                row for row in histories[team, player_id]
-                if row["game_date_et"] < game_date and row["game_id"] != game_id
-            ]
-            for key, market in MARKETS.items():
-                if player["position"] not in market.positions:
-                    continue
-                projections.append({
-                    "game_id": game_id, "week": week, "player_id": player_id, "team": team,
-                    "opponent": teams[1] if team == teams[0] else teams[0],
-                    "position": player["position"], "player_name": player["display_name"],
-                    "market": key, "game_date_et": game_date.isoformat(),
-                    "kickoff_utc": kickoff.isoformat(), "cutoff_utc": cutoff.isoformat(),
-                    "feature_snapshot_id": snapshot,
-                    "roster_evidence": player["roster_evidence"], "kickoff_evidence": schedule,
-                    "availability_status": "UNVERIFIED",
-                    "condition": "CONDITIONAL_ON_OFFENSIVE_PARTICIPATION",
-                    **forecast_market(key, history),
-                    "decision": "NO_BET",
-                })
+        if candidates:
+            projections.extend(_project_game(game, candidates, histories, cutoff, snapshot, schedule))
     return projections, {
         "week": week, "cutoff_utc": cutoff.isoformat(), "feature_catalog": catalog.lineage,
         "supplemental_evidence": [manifest for manifest, _ in captures],
-        "games": diagnostics, "data_audit": _audit(players),
+        "games": diagnostics, "data_audit": _audit(players) if players is not None else None,
     }
 
 
-def _labels(catalogs, season, scored_games, evidence_paths):
+def _labels(catalogs, season, scored_games, evidence_paths, *, expected_kickoffs=None):
     labels = {}
     if not scored_games:
         return labels
@@ -313,6 +342,10 @@ def _labels(catalogs, season, scored_games, evidence_paths):
         for row in players:
             if row["game_id"] not in scored_games:
                 continue
+            if expected_kickoffs is not None:
+                kickoff = expected_kickoffs[row["game_id"]]
+                if utc(row["kickoff_utc"]) != kickoff or utc(row["available_at_utc"]) <= kickoff:
+                    continue
             for key, market in MARKETS.items():
                 value, field = _value(row, market)
                 if value is None:
