@@ -65,6 +65,10 @@ cutoff em pasta exclusiva. Depois da validação e dos testes, o operador pode
 atualizar o `slate.json` da raiz. Os arquivos contêm estatísticas derivadas e
 diagnósticos de cobertura. EV permanece null e a decisão é NO_BET.
 
+A V1.4 aceita evidências imutáveis selecionadas explicitamente por `--evidence`.
+O [relatório da V1.4](TASK7_WEB_V1_4_PLAYER_COVERAGE.md) descreve a captura
+separada de roster e horário, a revisão de transações e o fallback opcional.
+
 ## Tarefa 3: construção e reconciliação canônica
 
 `nfl-canonical` / `python -m nfl_betting.canonical` faz a coleta e construção em pastas exclusivas, ou recebe `--snapshot` para reprocessar uma coleta específica. URLs/headers/corpos HTTP são capturados na sessão do loader, sem cache; versões e hashes acompanham o run. Resultados futuros/inconsistência de calendário, chaves duplicadas, identidade ambígua e adulteração de hashes bloqueiam o build. Falha da fonte injuries permite banco vazio tipado e PARTIAL, com diagnóstico; fontes essenciais ausentes resultam ERROR. Exit 2 permanece em erro de coleta ao vivo, mesmo que seja possível preservar um banco parcial.

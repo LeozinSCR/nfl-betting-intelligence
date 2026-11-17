@@ -21,9 +21,10 @@ from tempfile import NamedTemporaryFile
 
 from .canonical import open_database
 from .provenance import code_identity, sha256
+from .temporal_roster import GSIS, KICKOFF_CHANGES, KICKOFF_TEAMS, load_evidence, select_roster, utc
 
 
-SCHEMA_VERSION = "1.3.0"
+SCHEMA_VERSION = "1.4.0"
 POSITIONS = {"QB", "RB", "WR", "TE"}
 MARKETS = {
     "receptions": ("receptions", "weekly_receptions", POSITIONS - {"QB"}),
@@ -222,7 +223,9 @@ def _history_games(con, season, cutoff, snapshot):
         """
         CREATE OR REPLACE TEMP TABLE web_history_games AS
         SELECT g.game_id, g.season, g.season_type, g.week, g.home_team, g.away_team,
-               g.kickoff_utc, greatest(g.available_at, completion.available_at) AS available_at,
+               CASE WHEN r.game_id IS NULL THEN g.kickoff_utc
+                    WHEN (g.away_team,g.home_team) = (r.away_team,r.home_team) THEN r.kickoff_utc END AS kickoff_utc,
+               greatest(g.available_at, completion.available_at, r.available_at) AS available_at,
                g.source_snapshot_id
         FROM games g
         JOIN (
@@ -230,8 +233,11 @@ def _history_games(con, season, cutoff, snapshot):
             FROM coverage_audit WHERE has_end_marker AND available_at<=?
             GROUP BY game_id,season,season_type,week,source_snapshot_id
         ) completion USING (game_id,season,season_type,week,source_snapshot_id)
+        LEFT JOIN web_kickoff_revisions r ON r.game_id=g.game_id
         WHERE g.season=? AND g.season_type='REG' AND g.source_snapshot_id=?
-          AND g.available_at<=? AND g.kickoff_utc<?
+          AND g.available_at<=?
+          AND (CASE WHEN r.game_id IS NULL THEN g.kickoff_utc
+                    WHEN (g.away_team,g.home_team) = (r.away_team,r.home_team) THEN r.kickoff_utc END)<?
           AND g.has_result AND g.home_score IS NOT NULL AND g.away_score IS NOT NULL
         """,
         [cutoff, season, snapshot, cutoff, cutoff],
@@ -278,20 +284,51 @@ def _defense_history(con, defense, cutoff):
     }
 
 
-def _weekly_roster(con, season, week, cutoff, snapshot):
-    # Use the selected week's canonical roster association, not target statistics.
-    return _rows(
+def _weekly_roster(con, season, week, cutoff, manifest, fallback):
+    rows = _rows(
         con,
         """
-        SELECT team,player_id,display_name,position,roster_status,
-               count(*) OVER (PARTITION BY player_id) AS id_rows
+        SELECT team,player_id,display_name,position,roster_status,week,available_at
         FROM player_crosswalk
-        WHERE season=? AND season_type='REG' AND week=? AND available_at<=?
+        WHERE season=? AND season_type='REG' AND week BETWEEN ? AND ? AND available_at<=?
           AND source_snapshot_id=?
         ORDER BY team,position,player_id
         """,
-        [season, week, cutoff, snapshot],
+        [season, 1 if fallback else week, week, cutoff, manifest["source_snapshot_id"]],
     )
+    for row in rows:
+        available = _iso(row.pop("available_at"))
+        if not GSIS.fullmatch(row["player_id"] or ""):
+            row["player_id"] = None
+        row["source"] = {
+            "kind": "canonical_roster", "provider": "NFLverse via canonical DuckDB",
+            "snapshot_id": manifest["source_snapshot_id"], "source_url": None,
+            "sha256": manifest["database"]["sha256"],
+            "collected_at_utc": available, "available_at_utc": available,
+        }
+    return rows
+
+
+def _kickoff_revisions(con, captures):
+    revisions = {game_id: (None, None) for game_id in KICKOFF_CHANGES}
+    for source, rows in captures:
+        if source["kind"] != "kickoff":
+            continue
+        for game_id, kickoff in rows.items():
+            previous = revisions[game_id][1]
+            if previous is None or utc(source["available_at_utc"]) < utc(previous["available_at_utc"]):
+                revisions[game_id] = utc(kickoff), source
+    con.execute("""
+        CREATE OR REPLACE TEMP TABLE web_kickoff_revisions(
+            game_id VARCHAR, kickoff_utc TIMESTAMPTZ, available_at TIMESTAMPTZ,
+            away_team VARCHAR, home_team VARCHAR
+        )
+    """)
+    con.executemany("INSERT INTO web_kickoff_revisions VALUES (?, ?, ?, ?, ?)", [
+        (game_id, kickoff, utc(source["available_at_utc"]) if source else None, *KICKOFF_TEAMS[game_id])
+        for game_id, (kickoff, source) in revisions.items()
+    ])
+    return revisions
 
 
 def _player_history(con, player_id, cutoff):
@@ -421,6 +458,7 @@ def _prop_records(con, game, cutoff, defense_context, roster, histories):
             "position": player["position"],
             "game_id": game["game_id"],
             "roster_status": player["roster_status"],
+            "roster_evidence": player["roster_evidence"],
             "availability_status": "UNVERIFIED",
             "availability_note": "Weekly roster is not official inactive confirmation.",
             "quality": quality,
@@ -476,6 +514,7 @@ def _prop_records(con, game, cutoff, defense_context, roster, histories):
                     "team": player["team"],
                     "opponent": opponent,
                     "position": player["position"],
+                    "roster_evidence": player["roster_evidence"],
                     "market": market,
                     "side": "yes" if anytime else "over",
                     "line": line,
@@ -526,6 +565,7 @@ def _prop_records(con, game, cutoff, defense_context, roster, histories):
             "player_id": player_id, "display_name": player["display_name"],
             "team": player["team"], "position": player["position"],
             "game_id": game["game_id"], "offensive_history_games": len(history),
+            "roster_evidence": player["roster_evidence"],
             "markets": market_coverage,
         })
         if volume is not None:
@@ -542,6 +582,8 @@ def _prop_records(con, game, cutoff, defense_context, roster, histories):
 
 
 def _game_status(game, cutoff):
+    if game.get("kickoff_conflict"):
+        return "KICKOFF_UNVERIFIED"
     kickoff = game["kickoff_utc"]
     if kickoff is None:
         return "UNKNOWN"
@@ -582,13 +624,17 @@ def _game_analysis(con, game, cutoff):
 
 
 def _game_coverage(con, game, status, cutoff, roster, histories):
+    blocked = "KICKOFF_CONFLICT" if game.get("kickoff_conflict") else (
+        "KICKOFF_UNAVAILABLE" if game["kickoff_utc"] is None else "PREGAME_NOT_VERIFIABLE"
+    )
     coverage = {
-        "matchup_status": "KICKOFF_UNAVAILABLE" if game["kickoff_utc"] is None else "PREGAME_NOT_VERIFIABLE",
-        "props_status": "KICKOFF_UNAVAILABLE" if game["kickoff_utc"] is None else "PREGAME_NOT_VERIFIABLE",
+        "matchup_status": blocked,
+        "props_status": blocked,
         "roster_teams": None,
         "unresolved_roster_rows": None,
         "roster_candidates": None,
         "players_with_props": 0,
+        "provisional_players_with_props": 0,
         "prop_scenarios": 0,
     }
     if status != "SCHEDULED_AT_CUTOFF":
@@ -598,11 +644,14 @@ def _game_coverage(con, game, status, cutoff, roster, histories):
     coverage["matchup_status"] = "AVAILABLE" if matchup else "NO_COMPLETE_TEAM_HISTORY"
     game_roster = [p for p in roster if p["team"] in (game["away_team"], game["home_team"])]
     offensive = [p for p in game_roster if p["position"] in POSITIONS]
-    resolved = [p for p in offensive if p["player_id"] and p["id_rows"] == 1]
+    remaining = [p for p in offensive if p["excluded_reason"] is None]
+    resolved = [p for p in remaining if p["player_id"] and p["id_rows"] == 1]
     props, players, diagnostics = _prop_records(con, game, cutoff, defense, resolved, histories)
     roster_teams = sorted({player["team"] for player in game_roster})
+    roster_evidence = {p["team"]: p["roster_evidence"] for p in game_roster}
+    provisional = sum(p["roster_evidence"]["status"] == "PROVISIONAL_ROSTER" for p in players)
     if props:
-        complete = len(roster_teams) == 2 and len(resolved) == len(offensive) and all(
+        complete = len(roster_teams) == 2 and len(resolved) == len(offensive) and not provisional and all(
             item["status"] in {"AVAILABLE", "NOT_APPLICABLE_POSITION"}
             for player in diagnostics for item in player["markets"].values()
         )
@@ -610,27 +659,43 @@ def _game_coverage(con, game, status, cutoff, roster, histories):
     elif not game_roster:
         reason = "NO_WEEKLY_ROSTER"
     elif not resolved:
-        reason = "NO_RESOLVED_OFFENSIVE_ROSTER"
+        reason = "NO_RESOLVED_OFFENSIVE_ROSTER" if remaining else "NO_REMAINING_ROSTER_CANDIDATES"
     else:
         reason = "INSUFFICIENT_PLAYER_COVERAGE"
     coverage.update(
         props_status=reason, roster_teams=roster_teams, roster_candidates=len(resolved),
-        unresolved_roster_rows=len(offensive) - len(resolved),
+        roster_evidence=roster_evidence,
+        unresolved_roster_rows=len(remaining) - len(resolved),
+        roster_exclusions=dict(Counter(p["excluded_reason"] for p in offensive if p["excluded_reason"])),
+        provisional_players_with_props=provisional,
         players_with_props=len(players), prop_scenarios=len(props),
     )
     return coverage, matchup, props, players, diagnostics
 
 
-def build_export(con, manifest, *, season, week, cutoff, published_at):
+def build_export(con, manifest, *, season, week, cutoff, published_at, captures=(), roster_fallback=False):
     snapshot = manifest["source_snapshot_id"]
     games = _games(con, season, week, cutoff, snapshot)
     if not games:
         raise ValueError("No games are available for season/week at the cutoff")
+    canonical_available_at = max(game["available_at"] for game in games)
+    revisions = _kickoff_revisions(con, captures)
     _history_games(con, season, cutoff, snapshot)
-    roster = _weekly_roster(con, season, week, cutoff, snapshot)
+    canonical_roster = _weekly_roster(con, season, week, cutoff, manifest, roster_fallback)
+    roster = select_roster(canonical_roster, captures, week, cutoff, fallback=roster_fallback)
     game_items, analyses, all_props, all_players, player_coverage = [], [], [], [], []
     histories = {}
     for game in games:
+        original = game["kickoff_utc"]
+        kickoff_source = None
+        if game["game_id"] in revisions:
+            game["kickoff_utc"], kickoff_source = revisions[game["game_id"]]
+            if (game["away_team"], game["home_team"]) != KICKOFF_TEAMS[game["game_id"]]:
+                game["kickoff_utc"], kickoff_source = None, None
+            if kickoff_source:
+                game["available_at"] = max(game["available_at"], utc(kickoff_source["available_at_utc"]))
+            else:
+                game["kickoff_conflict"] = True
         status = _game_status(game, cutoff)
         coverage, matchup, props, players, diagnostics = _game_coverage(
             con, game, status, cutoff, roster, histories
@@ -642,11 +707,13 @@ def build_export(con, manifest, *, season, week, cutoff, published_at):
             "away_team": game["away_team"],
             "home_team": game["home_team"],
             "kickoff_utc": _iso(game["kickoff_utc"]),
+            "canonical_kickoff_utc": _iso(original),
+            "kickoff_evidence": kickoff_source,
             "available_at_utc": _iso(game["available_at"]),
             "status": status,
             "away_score": game["away_score"] if status == "RESULT_RECORDED" else None,
             "home_score": game["home_score"] if status == "RESULT_RECORDED" else None,
-            "status_source": "canonical.games",
+            "status_source": "NFL_OFFICIAL_CORRECTION" if kickoff_source else "canonical.games",
             "coverage": coverage,
         })
         if matchup:
@@ -670,6 +737,7 @@ def build_export(con, manifest, *, season, week, cutoff, published_at):
         "games_with_props": sum(game["coverage"]["prop_scenarios"] > 0 for game in eligible),
         "players": len({p["player_id"] for p in all_players}),
         "players_assessed": len({p["player_id"] for p in player_coverage}),
+        "provisional_players_with_props": sum(game["coverage"]["provisional_players_with_props"] for game in eligible),
         "prop_scenarios": len(all_props),
         "verified_quotes": 0,
     }
@@ -689,9 +757,11 @@ def build_export(con, manifest, *, season, week, cutoff, published_at):
         "cutoff_utc": _iso(cutoff),
         "published_at_utc": _iso(published_at),
         "temporal_mode": "FROZEN_SNAPSHOT_AS_OF_CUTOFF",
+        "roster_fallback_enabled": roster_fallback,
+        "evidence_snapshots": [source for source, _ in captures],
         "source_snapshot_id": snapshot,
         "source_snapshot_status": manifest["status"],
-        "source_available_at_utc": _iso(max(game["available_at"] for game in games)),
+        "source_available_at_utc": _iso(canonical_available_at),
         "database_sha256": manifest["database"]["sha256"],
         "source_manifest_sha256": manifest["source_manifest_sha256"],
         "code": code_identity(),
@@ -731,11 +801,12 @@ def _load_json(path):
     return json.loads(path.read_text(encoding="utf-8"), parse_constant=reject_constant)
 
 
-def _export_name(snapshot_id, season, week, cutoff):
+def _export_name(snapshot_id, season, week, cutoff, *, version=SCHEMA_VERSION, fallback=False):
     if not isinstance(snapshot_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", snapshot_id):
         raise ValueError("Invalid canonical source_snapshot_id")
     stamp = cutoff.strftime("%Y%m%dT%H%M%S%fZ")
-    return f"{snapshot_id}-v{SCHEMA_VERSION}-{season}-REG-W{week:02d}-{stamp}"
+    suffix = "-provisional" if fallback else ""
+    return f"{snapshot_id}-v{version}-{season}-REG-W{week:02d}-{stamp}{suffix}"
 
 
 def validate_export(destination):
@@ -744,11 +815,16 @@ def validate_export(destination):
     metadata = _load_json(destination / "metadata.json")
     slate = _load_json(destination / "slate.json")
     cutoff = parse_cutoff(metadata["cutoff_utc"])
-    name = _export_name(metadata["source_snapshot_id"], metadata["season"], metadata["week"], cutoff)
+    version = metadata["schema_version"]
+    fallback = metadata.get("roster_fallback_enabled", False)
+    name = _export_name(
+        metadata["source_snapshot_id"], metadata["season"], metadata["week"], cutoff,
+        version=version, fallback=fallback,
+    )
     if destination.name != name or slate["snapshot_path"] != f"snapshots/{name}/":
         raise ValueError("Export identity does not match its snapshot path")
     if (
-        metadata["schema_version"] != SCHEMA_VERSION
+        version not in {"1.3.0", SCHEMA_VERSION}
         or metadata["season_type"] != "REG"
         or type(metadata["week"]) is not int or not 1 <= metadata["week"] <= 18
         or metadata["source_snapshot_status"] not in {"OK", "PARTIAL"}
@@ -765,7 +841,7 @@ def validate_export(destination):
         if sha256(path) != metadata["artifact_sha256"][filename]:
             raise ValueError(f"Artifact hash mismatch: {filename}")
         payload = _load_json(path)
-        if payload["schema_version"] != SCHEMA_VERSION or not isinstance(payload["items"], list):
+        if payload["schema_version"] != version or not isinstance(payload["items"], list):
             raise ValueError(f"Invalid artifact schema: {filename}")
         if slate_key and slate[slate_key] != payload["items"]:
             raise ValueError(f"Slate differs from artifact: {filename}")
@@ -794,6 +870,8 @@ def validate_export(destination):
             return kickoff is not None and kickoff > cutoff
         if status == "STARTED_STATUS_UNKNOWN":
             return kickoff is not None and kickoff <= cutoff
+        if status == "KICKOFF_UNVERIFIED":
+            return version == SCHEMA_VERSION and kickoff is None and game["game_id"] in KICKOFF_CHANGES
         return status == "UNKNOWN"
 
     if len(games) != len(slate["games"]) or not all(valid_game(game) for game in games.values()):
@@ -828,6 +906,53 @@ def validate_export(destination):
             )
         ):
             raise ValueError(f"Invalid prop evidence or financial state: {prop['id']}")
+    if version == SCHEMA_VERSION:
+        evidence = {item["snapshot_id"]: item for item in metadata["evidence_snapshots"]}
+        if any(utc(item["available_at_utc"]) > cutoff for item in evidence.values()):
+            raise ValueError("Evidence snapshot after cutoff")
+        for game_id, game in games.items():
+            correction = game["kickoff_evidence"]
+            if correction:
+                if (
+                    evidence.get(correction["snapshot_id"]) != correction
+                    or correction["kind"] != "kickoff"
+                    or game["kickoff_utc"] != KICKOFF_CHANGES.get(game_id)
+                    or (game["away_team"], game["home_team"]) != KICKOFF_TEAMS.get(game_id)
+                    or game["status_source"] != "NFL_OFFICIAL_CORRECTION"
+                ):
+                    raise ValueError("Invalid kickoff correction")
+            elif game_id in KICKOFF_CHANGES and game["status"] != "KICKOFF_UNVERIFIED":
+                raise ValueError("Known kickoff conflict without as-of evidence")
+        for item in (*slate["players"], *slate["player_coverage"], *slate["props"]):
+            roster = item["roster_evidence"]
+            origin = roster["source_week"]
+            if (
+                roster["cutoff_utc"] != slate["cutoff_utc"]
+                or not utc(roster["collected_at_utc"]) <= utc(roster["available_at_utc"]) <= cutoff
+                or not GSIS.fullmatch(item["player_id"])
+                or roster["team_membership_status"] != "UNVERIFIED"
+                or roster["age_weeks"] != slate["week"] - origin
+                or not (
+                    roster["status"] == "EXACT_WEEK_ROSTER" and origin == slate["week"]
+                    or fallback and roster["status"] == "PROVISIONAL_ROSTER" and 1 <= origin < slate["week"]
+                )
+            ):
+                raise ValueError("Invalid roster provenance")
+            if roster["kind"] == "roster":
+                source = evidence.get(roster["snapshot_id"])
+                if source is None or any(roster.get(key) != value for key, value in source.items()):
+                    raise ValueError("Roster does not bind to its evidence snapshot")
+            elif (roster["kind"] != "canonical_roster" or roster["snapshot_id"] != slate["source_snapshot_id"]
+                  or roster["sha256"] != slate["database_sha256"]):
+                raise ValueError("Roster does not bind to its canonical snapshot")
+        if (
+            any(p["availability_status"] != "UNVERIFIED" or p["roster_status"] == "CUT" for p in slate["players"])
+            or any(p["eligibility"]["status"] != "UNVERIFIED" or p["context"]["quarterback_status"] != "UNVERIFIED"
+                   for p in slate["props"])
+            or any(len({p["player_id"] for p in slate[key]}) != len(slate[key])
+                   for key in ("players", "player_coverage"))
+        ):
+            raise ValueError("Invalid player identity or eligibility")
     counts = slate["counts"]
     if (
         counts["games"] != len(games) or counts["scheduled_games_at_cutoff"] != len(scheduled)
@@ -889,6 +1014,8 @@ def export_static(
     cutoff,
     published_at=None,
     publish_current=False,
+    evidence_paths=(),
+    roster_fallback=False,
 ):
     canonical_folder = Path(canonical_folder).resolve()
     output_root = _safe_output_root(output_root)
@@ -908,17 +1035,19 @@ def export_static(
         raise ValueError("Unusable canonical build")
     if published_at < cutoff:
         raise ValueError("published_at cannot precede cutoff")
-    name = _export_name(manifest["source_snapshot_id"], season, week, cutoff)
+    name = _export_name(manifest["source_snapshot_id"], season, week, cutoff, fallback=roster_fallback)
     snapshots = output_root / "snapshots"
     if snapshots.is_symlink() or snapshots.resolve() != snapshots:
         raise ValueError("Snapshot output directory must be local to the output root")
     destination = snapshots / name
     if destination.exists():
         raise FileExistsError(f"Snapshot export already exists: {destination}")
+    captures = load_evidence(evidence_paths, season, cutoff)
     with open_database(canonical_folder) as con:
         con.execute("SET enable_external_access=false")
         payload = build_export(
-            con, manifest, season=season, week=week, cutoff=cutoff, published_at=published_at
+            con, manifest, season=season, week=week, cutoff=cutoff, published_at=published_at,
+            captures=captures, roster_fallback=roster_fallback,
         )
     metadata = payload["metadata"]
     metadata["build_manifest_sha256"] = sha256(manifest_path)
@@ -958,6 +1087,8 @@ def main(argv=None):
     parser.add_argument("--week", type=int)
     parser.add_argument("--cutoff", help="Aware ISO-8601 cutoff")
     parser.add_argument("--published-at", help="Aware ISO-8601 publication time")
+    parser.add_argument("--evidence", type=Path, action="append", default=[], metavar="SNAPSHOT")
+    parser.add_argument("--allow-roster-fallback", action="store_true")
     parser.add_argument("--publish-current", action="store_true", help="Generate, validate and replace the local current slate")
     args = parser.parse_args(argv)
     try:
@@ -972,6 +1103,7 @@ def main(argv=None):
                 cutoff=parse_cutoff(args.cutoff),
                 published_at=parse_cutoff(args.published_at) if args.published_at else None,
                 publish_current=args.publish_current,
+                evidence_paths=args.evidence, roster_fallback=args.allow_roster_fallback,
             )
         print(json.dumps({
             "destination": str(destination), "status": slate["status"],

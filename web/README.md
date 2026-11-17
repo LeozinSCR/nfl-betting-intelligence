@@ -1,4 +1,4 @@
-# NFL Betting Intelligence — Web V1.3
+# NFL Betting Intelligence — Web V1.4
 
 PWA React/Vite estática e responsiva. O frontend lê JSON derivado do catálogo
 canônico; não acessa DuckDB, APIs de odds ou segredos no navegador.
@@ -39,6 +39,11 @@ observado no cutoff. Depois do kickoff, a falta de placar continua desconhecida.
 Os contadores separam confrontos com evidência de equipes e com props. A seção
 do confronto identifica roster ausente, identidades pendentes e lacunas de
 amostra por jogador e mercado.
+
+Na V1.4, a cobertura mostra a fonte e a semana do roster por equipe. Um roster
+anterior, quando habilitado, aparece como provisório junto ao jogador. Horários
+corrigidos exibem também o horário do catálogo de origem. Veja os comandos de
+captura e os resultados reais por confronto no [relatório da V1.4](../docs/TASK7_WEB_V1_4_PLAYER_COVERAGE.md).
 
 ## Gerar, validar e atualizar localmente
 
@@ -103,7 +108,7 @@ só atua sobre registros que realmente possuem preço. O ranking de EV permanece
 desabilitado enquanto não houver simultaneamente modelo validado, probabilidade
 finita, bookmaker/provider, quote verificada e validade temporal.
 
-### Cobertura real verificada
+### Cobertura real verificada na V1.3
 
 Catálogo NFLverse congelado `20261116T223853.798034Z-c42926123911446fbeb78d05c1635302`,
 estado `PARTIAL`, cutoff `2026-11-16T23:00:00Z`. Exportações e publicação local

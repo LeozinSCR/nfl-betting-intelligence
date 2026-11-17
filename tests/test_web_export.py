@@ -3,11 +3,16 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from io import BytesIO
+from unittest.mock import patch
+from uuid import uuid4
 
 import duckdb
+import polars as pl
 
 from nfl_betting.odds_sources import PROVIDERS, normalize_fixture
+from nfl_betting.temporal_roster import KICKOFF_URL, ROSTER_URL, capture, load_evidence, select_roster
 from nfl_betting.web_export import (
     analytical_thresholds,
     distribution,
@@ -133,11 +138,44 @@ class WebExportIntegrationTests(unittest.TestCase):
         self.manifest["database"]["sha256"] = hashlib.sha256(self.database.read_bytes()).hexdigest()
         (self.canonical / "build_manifest.json").write_text(json.dumps(self.manifest))
 
-    def export(self, *, output="out", week=4, cutoff="2026-10-01T00:00:00Z"):
+    def export(self, *, output="out", week=4, cutoff="2026-10-01T00:00:00Z", **kwargs):
+        timestamp = parse_cutoff(cutoff)
         return export_static(
             self.canonical, self.root / output, season=2026, week=week,
-            cutoff=parse_cutoff(cutoff), published_at=parse_cutoff("2026-10-03T00:00:00Z"),
+            cutoff=timestamp, published_at=timestamp + timedelta(seconds=1), **kwargs,
         )
+
+    def evidence(self, kind, body, *, at="2026-10-01T00:00:00Z", reviewed=None):
+        """Seal synthetic source bytes for offline contract tests only."""
+        stamp = parse_cutoff(at).strftime("%Y%m%dT%H%M%S%fZ")
+        folder = self.root / f"{kind}-{stamp}-{uuid4().hex}"
+        folder.mkdir()
+        url = {
+            "roster": ROSTER_URL.format(season=2026), "kickoff": KICKOFF_URL,
+            "transactions": "https://www.nfl.com/transactions/",
+        }[kind]
+        manifest = {
+            "schema_version": 1, "snapshot_id": folder.name, "kind": kind, "provider": "SYNTHETIC",
+            "source_url": url, "season": 2026, "collected_at_utc": at, "available_at_utc": at,
+            "source_last_modified": "Wed, 30 Sep 2026 00:00:00 GMT",
+            "sha256": hashlib.sha256(body).hexdigest(),
+        }
+        (folder / "source.bin").write_bytes(body)
+        if reviewed is not None:
+            payload = json.dumps({"source_sha256": manifest["sha256"], "records": reviewed}).encode()
+            (folder / "reviewed.json").write_bytes(payload)
+            manifest["reviewed_sha256"] = hashlib.sha256(payload).hexdigest()
+        (folder / "manifest.json").write_text(json.dumps(manifest))
+        return folder
+
+    def roster_evidence(self, rows):
+        buffer = BytesIO()
+        pl.DataFrame([
+            dict(season=2026, game_type="REG", week=week, team=team, gsis_id=player,
+                 full_name="Synthetic Fixture", position="WR", status=status)
+            for week, team, player, status in rows
+        ]).write_parquet(buffer)
+        return self.evidence("roster", buffer.getvalue())
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -314,6 +352,108 @@ class WebExportIntegrationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "modified database"):
             self.export()
         self.assertFalse((self.root / "out").exists())
+
+    def test_new_roster_uses_capture_time_and_preempts_prior_week(self):
+        with duckdb.connect(str(self.database)) as con:
+            con.execute("UPDATE player_crosswalk SET week=2")
+        self.refresh_manifest()
+        evidence = self.roster_evidence([(4, "LAC", "00-0000001", "ACT")])
+        prev = "2026-09-30T23:59:59Z"
+        _, strict = self.export(cutoff=prev, evidence_paths=[evidence])
+        self.assertEqual(strict["props"], [])
+        self.assertEqual(strict["evidence_snapshots"], [])
+        _, provisional = self.export(cutoff=prev, evidence_paths=[evidence], roster_fallback=True)
+        pending = provisional["props"][0]["roster_evidence"]
+        self.assertEqual((pending["status"], pending["source_week"], pending["age_weeks"]),
+                         ("PROVISIONAL_ROSTER", 2, 2))
+        self.assertEqual(pending["team_membership_status"], "UNVERIFIED")
+        _, exact = self.export(evidence_paths=[evidence], roster_fallback=True)
+        self.assertGreater(len(exact["props"]), 0)
+        for prop in exact["props"]:
+            self.assertEqual(prop["roster_evidence"]["status"], "EXACT_WEEK_ROSTER")
+            self.assertEqual(prop["eligibility"]["status"], "UNVERIFIED")
+            self.assertNotIn(prop["game_id"], [o["game_id"] for o in prop["history"]["observations"]])
+        (evidence / "source.bin").write_bytes(b"modified")
+        with self.assertRaisesRegex(ValueError, "hash mismatch"):
+            self.export(output="tamper", evidence_paths=[evidence])
+
+    def test_capture_archives_each_response_without_overwriting(self):
+        source = self.roster_evidence([(4, "LAC", "00-0000001", "ACT")])
+        body = (source / "source.bin").read_bytes()
+        output = self.root / "sealed"
+        with patch("nfl_betting.temporal_roster.urlopen") as request:
+            response = request.return_value.__enter__.return_value
+            response.read.return_value = body
+            response.headers = {"Last-Modified": "Wed, 30 Sep 2026 00:00:00 GMT"}
+            first, manifest = capture("roster", output, season=2026)
+            second, _ = capture("roster", output, season=2026)
+        self.assertNotEqual(first, second)
+        self.assertEqual((first / "source.bin").read_bytes(), body)
+        self.assertEqual(json.loads((first / "manifest.json").read_text()), manifest)
+        self.assertLessEqual(parse_cutoff(manifest["collected_at_utc"]), parse_cutoff(manifest["available_at_utc"]))
+
+    def test_provisional_filters_cut_transfer_duplicate_and_honors_effective_time(self):
+        roster = self.roster_evidence([
+            (2, "LAC", "00-0000001", "ACT"), (2, "BAL", "00-0000001", "ACT"),
+            (2, "LAC", "00-0000002", "CUT"), (2, "LAC", "00-0000003", "ACT"),
+            (2, "BAL", "00-0000003", "ACT"), (2, "BAL", "00-0000004", "ACT"),
+            (1, "BAL", "00-0000005", "ACT"), (5, "LAC", "00-0000006", "ACT"),
+        ])
+        transactions = self.evidence("transactions", b"Synthetic reviewed source", reviewed=[
+            {"player_id": "00-0000001", "from_team": "LAC", "to_team": "BAL",
+             "effective_at_utc": "2026-09-30T12:00:00Z", "published_at_utc": "2026-09-30T12:00:00Z"},
+            {"player_id": "00-0000004", "from_team": "BAL", "to_team": None,
+             "effective_at_utc": "2026-10-01T01:00:00Z", "published_at_utc": "2026-09-30T12:00:00Z"},
+        ])
+        cutoff = parse_cutoff("2026-10-01T00:00:00Z")
+        captures = load_evidence([roster, transactions], 2026, cutoff)
+        selected = select_roster([], captures, 4, cutoff, fallback=True)
+        expected = {("BAL", "00-0000001"), ("BAL", "00-0000004")}
+        self.assertEqual({(p["team"], p["player_id"]) for p in selected
+                          if p["id_rows"] == 1 and not p["excluded_reason"]}, expected)
+        reasons = {(p["team"], p["player_id"]): p["excluded_reason"] for p in selected}
+        self.assertEqual(reasons["LAC", "00-0000001"], "ENDED_TEAM_MEMBERSHIP")
+        self.assertEqual(reasons["LAC", "00-0000002"], "CUT")
+        self.assertNotIn(("BAL", "00-0000005"), reasons)
+        self.assertNotIn(("LAC", "00-0000006"), reasons)
+        later = parse_cutoff("2026-10-01T01:00:00Z")
+        later_rows = select_roster([], captures, 4, later, fallback=True)
+        self.assertEqual(next(p["excluded_reason"] for p in later_rows if p["player_id"] == "00-0000004"),
+                         "ENDED_TEAM_MEMBERSHIP")
+
+    def test_official_kickoff_revision_gates_history_and_pregame_cutoff(self):
+        evidence = self.evidence("kickoff", b"""
+            Synthetic Fixture. Nov. 9, 2026. Sunday, Nov. 22.
+            Jacksonville Jaguars at New York Giants game will move to 4:25 p.m. ET.
+            Pittsburgh Steelers at Philadelphia Eagles game will move to 1 p.m. ET.
+        """, at="2026-11-17T22:00:00Z")
+        with duckdb.connect(str(self.database)) as con:
+            con.execute("""
+                UPDATE games SET game_id='2026_11_PIT_PHI', week=11, kickoff_utc='2026-11-22T21:25:00Z',
+                away_team='PIT', home_team='PHI'
+                WHERE game_id='target'
+                """)
+            con.execute("UPDATE player_crosswalk SET week=11, team='PIT'")
+            con.execute("""
+                INSERT INTO player_week SELECT * REPLACE(
+                    '2026_11_PIT_PHI' AS game_id, 11 AS week, 999 AS receptions, 'PIT' AS team
+                ) FROM player_week WHERE game_id='g1'
+                """)
+        self.refresh_manifest()
+        options = {"week": 11, "evidence_paths": [evidence]}
+        _, blocked = self.export(cutoff="2026-11-17T21:59:59Z", **options)
+        self.assertEqual(blocked["games"][0]["status"], "KICKOFF_UNVERIFIED")
+        self.assertEqual(blocked["props"], [])
+        _, corrected = self.export(cutoff="2026-11-22T17:59:00Z", **options)
+        game = corrected["games"][0]
+        self.assertEqual(game["kickoff_utc"], "2026-11-22T18:00:00+00:00")
+        self.assertEqual(game["canonical_kickoff_utc"], "2026-11-22T21:25:00+00:00")
+        self.assertGreater(len(corrected["props"]), 0)
+        for prop in corrected["props"]:
+            self.assertNotIn(999, [row["value"] for row in prop["history"]["observations"]])
+        _, started = self.export(cutoff="2026-11-22T18:00:00Z", **options)
+        self.assertEqual(started["games"][0]["status"], "STARTED_STATUS_UNKNOWN")
+        self.assertEqual(started["props"], [])
 
 
 if __name__ == "__main__":

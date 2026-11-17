@@ -18,7 +18,7 @@ const MARKET_LABEL = {
 const STATUS_LABEL = {
   FINAL: 'Final', SCHEDULED: 'Agendado no cutoff',
   SCHEDULED_AT_CUTOFF: 'Agendado no cutoff', RESULT_RECORDED: 'Resultado registrado',
-  STARTED_STATUS_UNKNOWN: 'Sem resultado no cutoff'
+  STARTED_STATUS_UNKNOWN: 'Sem resultado no cutoff', KICKOFF_UNVERIFIED: 'Horário em verificação'
 };
 const DEFAULT_FILTERS = { search: '', position: '', market: '', minOdds: 1.5, onlyQuoted: false };
 const PROP_PAGE_SIZE = 48;
@@ -134,6 +134,9 @@ function App() {
             : view === 'props' ? 'Scanner de player props' : view === 'td' ? 'Análise de Anytime TD' : 'Jogos e evidências'}</h1>
           <p className="hero-description">{game ? `${datetime(game.kickoff_utc)} · ${gameStatus(game)}`
             : 'Explore confrontos e evidências históricas de player props.'}</p>
+          {game?.kickoff_evidence && <p className="hero-description">
+            Horário corrigido pela NFL · horário no catálogo {datetime(game.canonical_kickoff_utc)}.
+          </p>}
           {game && <a className="jump" href="#props-title" onClick={(event) => {
             event.preventDefault();
             focusSection('props-title');
@@ -294,7 +297,9 @@ function Prop({ prop, cutoff }) {
   return <article className="card prop">
     <h3 className="prop-heading"><button className="prophead" onClick={() => setOpen(!open)} aria-expanded={open}>
       <span className="position">{prop.position || '—'}</span>
-      <span className="propname"><b>{prop.player_name}</b><small>{prop.team} × {prop.opponent} · {market}</small></span>
+      <span className="propname"><b>{prop.player_name}</b><small>{prop.team} × {prop.opponent} · {market}
+        {prop.roster_evidence?.status === 'PROVISIONAL_ROSTER' && ` · Roster provisório S${prop.roster_evidence.source_week}`}
+      </small></span>
       <span className="line"><b>{lineLabel(prop)}</b><small>{prop.line_kind === 'ANALYTICAL_THRESHOLD_NOT_BOOK_OFFER' ? 'Limiar analítico' : 'Cenário de TD'}</small></span>
       <span className={`price ${quoteOk ? '' : 'missing'}`}><b>{quoteOk ? number(prop.quote.decimal_odds, 2) : 'Sem odd'}</b>
         {quoteOk && <small>{prop.quote.bookmaker}</small>}
@@ -336,6 +341,7 @@ function Prop({ prop, cutoff }) {
       </div>}
       <div className="prop-source micro">
         <p><b>{prop.decision || 'NO_BET'}</b> · Disponibilidade oficial {prop.eligibility?.status === 'UNVERIFIED' ? 'não verificada' : prop.eligibility?.status || 'indisponível'} · Cutoff {datetime(cutoff)}</p>
+        {prop.roster_evidence && <p>Roster · {prop.roster_evidence.provider} · Semana {prop.roster_evidence.source_week} · Disponível {datetime(prop.roster_evidence.available_at_utc)}</p>}
         {prop.sources?.length > 0 && <p>Fonte dos dados: {prop.sources.map(({ provider, table }) => `${provider} (${table})`).join(' · ')}</p>}
         {quoteOk && <p>Cotação: {prop.quote.bookmaker} · {prop.quote.provider} · Capturada {datetime(prop.quote.observed_at_utc || prop.quote.observed_at)} · Válida até {datetime(prop.quote.valid_until_utc || prop.quote.valid_until)}</p>}
       </div>
