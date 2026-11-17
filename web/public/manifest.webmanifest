@@ -1,0 +1,10 @@
+{
+  "name": "NFL Betting Intelligence",
+  "short_name": "NFL Intelligence",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#08101c",
+  "theme_color": "#08101c",
+  "lang": "pt-BR",
+  "description": "Jogos NFL e análises auditáveis de player props. Pesquisa, não recomendação financeira."
+}
