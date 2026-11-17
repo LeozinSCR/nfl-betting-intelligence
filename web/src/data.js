@@ -34,6 +34,7 @@ export function filterProps(props, filters) {
   const search = (filters.search || '').trim().toLocaleLowerCase('pt-BR');
   return (props || []).filter((prop) => {
     if (filters.gameId && prop.game_id !== filters.gameId) return false;
+    if (filters.team && prop.team !== filters.team) return false;
     if (filters.position && prop.position !== filters.position) return false;
     if (filters.market && prop.market !== filters.market) return false;
     if (filters.tdOnly && prop.market !== 'anytime_td') return false;
