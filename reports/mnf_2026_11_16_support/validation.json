@@ -1,0 +1,19 @@
+{
+  "baseline_tests": 82,
+  "final_tests": 87,
+  "additional_tests": 5,
+  "status": "PASS",
+  "python": "Python 3.12.14",
+  "historical_integrity": "SHA256_OK",
+  "pip_check": "PASS",
+  "syntax_checks": "PASS",
+  "test_log_sha256": "a4cd3bcae73c482a735b716fe7b14b3c6f0bbd68a9cbbc0e3c69e94b8a67399a",
+  "report_hashes": {
+    "reports/MNF_2026_11_16_ANYTIME_TD.csv": "482c2e2cda355a17cafd5ce349492aa37dfbfa44da0c5803d95b15f9ef79b041",
+    "reports/MNF_2026_11_16_EVIDENCE.json": "cd4ea724e9f31a685e5644ae8fd70d1de3ee0f644e95aa1f122c76649a3170f5",
+    "reports/MNF_2026_11_16_PLAYER_PROPS.csv": "e7d73d1794ffaca2ad0260a8c009c7ad6c0a95f0116dabab950a74be257c7c13",
+    "reports/MNF_2026_11_16_PREVIEW.md": "2121507249d847cc6b7dd41b2fcb9a824ae8b5635b2fd9fdcd9deb0dd0e68fb6"
+  },
+  "new_generator_sha256": "c5ed42fc2c08dd80c61a7b0f69b913f5290f57ec8b3409ad680f26a14ea0c747",
+  "no_financial_execution": true
+}

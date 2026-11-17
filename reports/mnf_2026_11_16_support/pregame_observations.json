@@ -1,0 +1,44 @@
+{
+  "game_id": "2026_10_LAC_BAL",
+  "cutoff": "2026-11-17T00:36:04+00:00",
+  "observation_time_semantics": "Web pages were read during this session before this upper-bound timestamp; it is not a source publication time or quote expiry.",
+  "sources": {
+    "lac_inactives": {"url": "https://www.chargers.com/news/ravens-inactives-week-10-2026", "publisher": "Los Angeles Chargers", "published_at": "2026-11-16T15:45:00-08:00", "observed_no_later_than": "2026-11-17T00:36:04+00:00", "retrieval": "web tool, opened full article"},
+    "bal_inactives": {"url": "https://www.baltimoreravens.com/news/ravens-inactives-chagers-shakeup-defense-practice-squad-nick-vannett-chris-moore-chandler-rivers", "publisher": "Baltimore Ravens", "published_at": "2026-11-16T18:57:00-05:00", "observed_no_later_than": "2026-11-17T00:36:04+00:00", "retrieval": "web tool, opened full article"},
+    "bal_ir": {"url": "https://www.baltimoreravens.com/news/lamar-jackson-tyler-huntley-injured-reserve-austin-reed-adisa-isaac-jake-moody", "publisher": "Baltimore Ravens", "published_at": "2026-11-05T16:35:00-05:00", "observed_no_later_than": "2026-11-17T00:36:04+00:00", "retrieval": "web tool, opened full article"},
+    "herbert_update": {"url": "https://www.chargers.com/news/justin-herbert-ladd-mcconkey-update-jim-harbaugh-trade-deadline", "publisher": "Los Angeles Chargers", "published_at": "2026-11-09T16:30:00-08:00", "observed_no_later_than": "2026-11-17T00:36:04+00:00", "retrieval": "web tool, opened article"},
+    "lac_injury": {"url": "https://www.chargers.com/news/chargers-vs-ravens-injury-report-ladd-mcconkey-daiyan-henley-2026", "publisher": "Los Angeles Chargers", "published_at": "2026-11-15T11:45:00-08:00", "observed_no_later_than": "2026-11-17T00:36:04+00:00", "retrieval": "web tool, opened full article"},
+    "bal_ol": {"url": "https://www.baltimoreravens.com/news/ryan-neuzil-cam-jurgens-role-jaylinn-hawkins-returns-ravens-new-kicker-search", "publisher": "Baltimore Ravens", "published_at": "2026-11-11T17:54:00-05:00", "observed_no_later_than": "2026-11-17T00:36:04+00:00", "retrieval": "web tool, opened full article"},
+    "dk_props": {"url": "https://dknetwork.draftkings.com/draftkings-sportsbook-player-props/", "publisher": "DraftKings Network", "bookmaker": "DraftKings", "published_at": null, "observed_no_later_than": "2026-11-17T00:36:04+00:00", "valid_until": null, "retrieval": "web tool, table rows observed; public publisher board, not execution quote", "refresh_claim": "page says updated every five minutes; no individual quote timestamp/expiry returned"}
+  },
+  "official_inactives": {
+    "LAC": ["Ladd McConkey", "Kendall Williamson", "Isas Waxter", "Bud Dupree", "Brenen Thompson", "Justin Eboigbe"],
+    "BAL": ["Elijah Sarratt", "Jaylinn Hawkins", "Chandler Rivers", "Emery Jones Jr.", "Aeneas Peebles", "Kedon Slovis (emergency third QB)"]
+  },
+  "overrides_by_gsis": {
+    "00-0039915": {"status": "INACTIVE_OFFICIAL", "source": "lac_inactives", "note": "McConkey fora; excluir candidatos elegiveis"},
+    "00-0034796": {"status": "IR_OFFICIAL", "source": "bal_ir", "note": "Lamar Jackson fora; polegar"},
+    "00-0035993": {"status": "IR_OFFICIAL", "source": "bal_ir", "note": "Tyler Huntley fora; calendario raw ainda o lista erroneamente como QB"},
+    "00-0033885": {"status": "ACTIVE_EXPLICIT_OFFICIAL", "source": "lac_inactives", "note": "Njoku ativado da IR; contradiz RES do roster coletado; papel/minutos ainda incertos"},
+    "00-0033119": {"status": "STARTER_OFFICIAL", "source": "bal_inactives", "note": "Brissett estreia por Baltimore; zero jogos previos BAL neste snapshot"},
+    "00-0036355": {"status": "ELIGIBLE_ROSTER_PLUS_OFFICIAL_INACTIVES", "source": "lac_inactives", "note": "Herbert no roster ACT, nao consta dos inativos oficiais; QB previsto no calendario; mao esquerda com exames negativos na atualizacao oficial"},
+    "00-0040075": {"status": "ELIGIBLE_ROSTER_PLUS_OFFICIAL_INACTIVES", "source": "bal_inactives", "note": "LaJohntay Wester e retornador; nao confundir snaps ST com snaps ofensivos"}
+  },
+  "market_observations": [
+    {"player_id":"00-0032764","market":"rush_yards","comparator":">=","line":70,"display_line":"70+","american_odds":-180,"source":"dk_props"},
+    {"player_id":"00-0032764","market":"rush_yards","comparator":">=","line":80,"display_line":"80+","american_odds":-119,"source":"dk_props"},
+    {"player_id":"00-0039064","market":"rec_yards","comparator":">=","line":70,"display_line":"70+","american_odds":-143,"source":"dk_props"},
+    {"player_id":"00-0036355","market":"pass_yards","comparator":">=","line":200,"display_line":"200+","american_odds":-115,"source":"dk_props"},
+    {"player_id":"00-0032764","market":"anytime_td","comparator":">=","line":1,"display_line":"Anytime TD","american_odds":-155,"source":"dk_props"},
+    {"player_id":"00-0039064","market":"anytime_td","comparator":">=","line":1,"display_line":"Anytime TD","american_odds":165,"source":"dk_props"},
+    {"player_id":"00-0040666","market":"anytime_td","comparator":">=","line":1,"display_line":"Anytime TD","american_odds":295,"source":"dk_props"},
+    {"player_id":"00-0034753","market":"anytime_td","comparator":">=","line":1,"display_line":"Anytime TD","american_odds":350,"source":"dk_props"},
+    {"player_id":"00-0038544","market":"anytime_td","comparator":">=","line":1,"display_line":"Anytime TD","american_odds":450,"source":"dk_props"},
+    {"player_id":"00-0040727","market":"anytime_td","comparator":">=","line":1,"display_line":"Anytime TD","american_odds":340,"source":"dk_props"},
+    {"player_id":"00-0033885","market":"anytime_td","comparator":">=","line":1,"display_line":"Anytime TD","american_odds":750,"source":"dk_props"},
+    {"player_id":"00-0036355","market":"anytime_td","comparator":">=","line":1,"display_line":"Anytime TD","american_odds":600,"source":"dk_props"}
+  ],
+  "integration_status": "MANUAL_RESEARCH_OBSERVATIONS_NOT_PRODUCTION_ADAPTER",
+  "financial_approved": false,
+  "statistical_approved": false
+}
