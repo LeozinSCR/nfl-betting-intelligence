@@ -14,7 +14,7 @@ from uuid import uuid4
 
 from pytz import timezone
 
-from . import archive
+from . import archive, licensed_schedule
 from .canonical import build
 from .ingest_nflverse import SOURCES, collect
 from .projection import _connect, read_catalog
@@ -27,6 +27,8 @@ MAX_WINDOW_MINUTES = 30
 SAO_PAULO = timezone("America/Sao_Paulo")
 REQUIRED = set(SOURCES) - {"injuries"}
 OFFICIAL_FILES = ("manifest.json", "source.bin", "authorization.bin")
+LICENSED = licensed_schedule.MODE
+KICKOFF_CONFLICT = "KICKOFF_CONFLICT_OR_UNVERIFIED"
 
 
 def _now():
@@ -115,24 +117,70 @@ def _same_game(row, target):
     )
 
 
-def plan_window(catalog_folder, official_folder, season, week, games, output, lead_minutes=135, *, clock=_now):
-    official_folder = Path(official_folder).resolve()
-    output = _output(output, catalog_folder, official_folder)
+def _reschedule(official_folder, previous_file, target, season, week, lead, now):
+    # Reuse the existing independent, authorized evidence contract for changes.
+    if official_folder.is_symlink() or previous_file.is_symlink():
+        raise ValueError(KICKOFF_CONFLICT)
+    official, games = _official(official_folder)
+    previous = _read(previous_file)
+    game_id = target["game_id"]
+    old = next((row for row in previous["games"] if row["game_id"] == game_id), None)
+    new = games.get(game_id)
+    previous_digest = sha256(previous_file)
+    if (
+        (official["season"], official["week"]) != (season, week)
+        or (previous["season"], previous["week"], previous["lead_minutes"]) != (season, week, lead)
+        or official.get("supersedes_plan_sha256") != previous_digest
+        or old is None or new is None or utc(old["kickoff_utc"]) == utc(target["kickoff_utc"])
+        or any(row[key] != target[key] for row in (old, new) for key in ("away_team", "home_team"))
+        or utc(new["kickoff_utc"]) != utc(target["kickoff_utc"])
+        or not utc(previous["planned_at_utc"]) < utc(official["available_at_utc"]) <= now
+        or not now < utc(old["kickoff_utc"])
+    ):
+        raise ValueError(f"{KICKOFF_CONFLICT}: invalid reschedule evidence for {game_id}")
+    return {
+        "supersedes_plan_sha256": previous_digest, "previous_kickoff_utc": old["kickoff_utc"],
+        "previous_cutoff_utc": old["cutoff_utc"],
+        **_official_proof(official, sha256(official_folder / "manifest.json")),
+    }, old
+
+
+def plan_window(catalog_folder, official_folder, season, week, games, output, lead_minutes=135, *,
+                clock=_now, licensed_folder=None, resolution=None, supersedes=None):
+    licensed = licensed_folder is not None
+    if (official_folder is not None) == licensed or bool(resolution) != bool(supersedes) or (resolution and not licensed):
+        raise ValueError("Select one calendar source; a licensed reschedule requires resolution and supersedes")
+    source = Path(licensed_folder if licensed else official_folder).resolve()
+    resolution = Path(resolution).resolve() if resolution else None
+    supersedes = Path(supersedes).resolve() if supersedes else None
+    output = _output(output, catalog_folder, source, *(path for path in (resolution, supersedes) if path))
     if not 1 <= week <= 18 or not 1 <= lead_minutes <= 24 * 60:
         raise ValueError("Expected regular-season week 1..18 and a positive lead")
     ids = list(games)
     if not ids or len(ids) != len(set(ids)):
         raise ValueError("Supply distinct game IDs for one window")
     now = utc(clock())
-    official, reference = _official(official_folder)
-    if (official["season"], official["week"]) != (season, week) or utc(official["available_at_utc"]) > now:
+    evidence, reference = (licensed_schedule.load(source) if licensed else _official(source))
+    if (evidence["season"], evidence["week"]) != (season, week) or utc(evidence["available_at_utc"]) > now:
         raise ValueError("Official evidence does not match the season, week or planning clock")
+    if supersedes:
+        _load_plan(supersedes)
+        if len(ids) != 1:
+            raise ValueError("Plan a remapped kickoff in a single-game window")
     catalog, calendar, _ = _calendar(catalog_folder, season, week, now)
     targets = []
+    change = None
     for game_id in sorted(ids):
         game = reference.get(game_id)
-        if game is None or not _same_game(calendar.get(game_id), game):
-            raise ValueError(f"KICKOFF_CONFLICT_OR_UNVERIFIED: {game_id}")
+        if game is None:
+            raise ValueError(f"{KICKOFF_CONFLICT}: {game_id}")
+        if licensed:
+            licensed_schedule.confirm(evidence, game, now)
+        previous = None
+        if resolution:
+            change, previous = _reschedule(resolution, supersedes / "plan.json", game, season, week, lead_minutes, now)
+        if not _same_game(calendar.get(game_id), game) and not (previous and _same_game(calendar.get(game_id), previous)):
+            raise ValueError(f"{KICKOFF_CONFLICT}: {game_id}")
         kickoff = utc(game["kickoff_utc"])
         cutoff = kickoff - timedelta(minutes=lead_minutes)
         if now > cutoff:
@@ -149,44 +197,77 @@ def plan_window(catalog_folder, official_folder, season, week, games, output, le
     plan = {
         "schema_version": VERSION, "season": season, "week": week, "lead_minutes": lead_minutes,
         "planned_at_utc": now.isoformat(), "reference_catalog": catalog.lineage,
-        "official_manifest_sha256": sha256(official_folder / "manifest.json"), "games": targets,
+        "games": targets,
         "decision": "NO_BET",
     }
+    manifest_digest = sha256(source / "manifest.json")
+    if licensed:
+        plan.update(evidence_mode=LICENSED, licensed_manifest_sha256=manifest_digest)
+        if change:
+            plan["reschedule"] = change
+    else:
+        plan["official_manifest_sha256"] = manifest_digest
     output.mkdir(parents=True)
-    _copy_official(official_folder, output / "official")
+    if licensed:
+        _copy_files(source, output / "licensed", licensed_schedule.FILES)
+        if change:
+            _copy_files(resolution, output / "licensed/resolution", OFFICIAL_FILES)
+            shutil.copyfile(supersedes / "plan.json", output / "licensed/previous-plan.json")
+    else:
+        _copy_files(source, output / "official", OFFICIAL_FILES)
     _write(output / "plan.json", plan)
+    if licensed:
+        _load_plan(output)
     return plan
 
 
-def _copy_official(source, destination):
+def _copy_files(source, destination, names):
     destination.mkdir()
-    for name in OFFICIAL_FILES:
+    for name in names:
         shutil.copyfile(source / name, destination / name)
 
 
 def _load_plan(folder):
     _verified_files(folder, ("plan.json",))
     plan = _read(folder / "plan.json")
-    official_path = folder / "official"
-    if official_path.is_symlink():
-        raise ValueError("Official evidence must be stored inside the plan")
-    official, source_games = _official(official_path)
+    licensed = plan.get("evidence_mode") == LICENSED
+    if "evidence_mode" in plan and not licensed:
+        raise ValueError("Unknown calendar evidence mode")
+    evidence_path = folder / ("licensed" if licensed else "official")
+    if evidence_path.is_symlink():
+        raise ValueError("Calendar evidence must be stored inside the plan")
+    evidence, source_games = (licensed_schedule.load(evidence_path) if licensed else _official(evidence_path))
+    manifest_key = "licensed_manifest_sha256" if licensed else "official_manifest_sha256"
     if (
         plan["schema_version"] != VERSION
-        or sha256(official_path / "manifest.json") != plan["official_manifest_sha256"]
-        or (plan["season"], plan["week"]) != (official["season"], official["week"])
+        or sha256(evidence_path / "manifest.json") != plan[manifest_key]
+        or (plan["season"], plan["week"]) != (evidence["season"], evidence["week"])
         or not 1 <= plan["week"] <= 18 or not 1 <= plan["lead_minutes"] <= 24 * 60
         or plan["decision"] != "NO_BET"
     ):
         raise ValueError("Plan and official manifest mismatch")
     now = utc(plan["planned_at_utc"])
-    if not utc(official["available_at_utc"]) <= now or utc(plan["reference_catalog"]["available_at_utc"]) > now:
+    if not utc(evidence["available_at_utc"]) <= now or utc(plan["reference_catalog"]["available_at_utc"]) > now:
         raise ValueError("Plan references future evidence")
+    if licensed:
+        allowed = set(licensed_schedule.FILES)
+        if "reschedule" in plan:
+            if len(plan["games"]) != 1:
+                raise ValueError(KICKOFF_CONFLICT)
+            allowed |= {"resolution", "previous-plan.json"}
+            resolved, _ = _reschedule(evidence_path / "resolution", evidence_path / "previous-plan.json",
+                                      plan["games"][0], plan["season"], plan["week"], plan["lead_minutes"], now)
+            if resolved != plan["reschedule"] or {p.name for p in (evidence_path / "resolution").iterdir()} != set(OFFICIAL_FILES):
+                raise ValueError(KICKOFF_CONFLICT)
+        if {p.name for p in evidence_path.iterdir()} != allowed:
+            raise ValueError("Unexpected licensed evidence file")
     timestamps, ids = [], set()
     for target in plan["games"]:
         game_id = target["game_id"]
         kickoff, cutoff = utc(target["kickoff_utc"]), utc(target["cutoff_utc"])
         src = source_games[game_id]
+        if licensed:
+            licensed_schedule.confirm(evidence, src, now)
         if (
             game_id in ids or kickoff != utc(src["kickoff_utc"]) or not now <= cutoff < kickoff
             or target["kickoff_sao_paulo"] != kickoff.astimezone(SAO_PAULO).isoformat()
@@ -198,7 +279,7 @@ def _load_plan(folder):
         ids.add(game_id)
     if not ids or max(timestamps) - min(timestamps) > timedelta(minutes=MAX_WINDOW_MINUTES):
         raise ValueError("Expected one capture window")
-    return plan, official
+    return plan, evidence
 
 
 def _nflverse_url(value):
@@ -261,18 +342,47 @@ def _checked_raw(folder, manifest_hash, started, sealed):
     return raw, source_end, _source_inputs(raw, source_start, source_end)
 
 
-def _derive(folder, plan, official, run, catalog_digest):
+def _official_proof(evidence, manifest_digest):
+    return {
+        "source_url": evidence["source_url"], "source_version": evidence["source_version"],
+        "started_at_utc": evidence["started_at_utc"], "finished_at_utc": evidence["finished_at_utc"],
+        "available_at_utc": evidence["available_at_utc"], "published_at_utc": evidence.get("published_at_utc"),
+        "sha256": evidence["sha256"], "authorization_sha256": evidence["authorization_sha256"],
+        "manifest_sha256": manifest_digest,
+    }
+
+
+def _kickoff_proof(plan, evidence, game_id):
+    if plan.get("evidence_mode") != LICENSED:
+        return _official_proof(evidence, plan["official_manifest_sha256"])
+    observation = evidence["observations"][game_id]
+    proof = {key: value for key, value in evidence.items() if key != "observations"}
+    proof.update(official_observation=observation, manifest_sha256=plan["licensed_manifest_sha256"])
+    if "reschedule" in plan:
+        proof["reschedule"] = plan["reschedule"]
+    proof["available_at_utc"] = max(
+        utc(proof["available_at_utc"]), utc(observation["observed_at_utc"]),
+        utc(plan.get("reschedule", proof)["available_at_utc"]),
+    ).isoformat()
+    return proof
+
+
+def _verify_license_capture(raw):
+    schedules = raw["sources"].get("schedules", {})
+    if schedules.get("status") == "OK" and (
+        schedules.get("resolved_download_url") != licensed_schedule.SOURCE
+        or any(row["requested_url"] != licensed_schedule.SOURCE for row in schedules["http_responses"]
+               if row["status_code"] == 200)
+    ):
+        raise ValueError("LICENSE_SCOPE_UNVERIFIED: captured schedule URL differs from the licensed release")
+
+
+def _derive(folder, plan, evidence, run, catalog_digest):
     started, sealed = utc(run["started_at_utc"]), utc(run["sealed_at_utc"])
     if not utc(plan["planned_at_utc"]) <= started <= sealed:
         raise ValueError("Invalid run chronology")
+    licensed = plan.get("evidence_mode") == LICENSED
     sources, calendar, roster = [], {}, set()
-    official_proof = {
-        "source_url": official["source_url"], "source_version": official["source_version"],
-        "started_at_utc": official["started_at_utc"], "finished_at_utc": official["finished_at_utc"],
-        "available_at_utc": official["available_at_utc"], "published_at_utc": official.get("published_at_utc"),
-        "sha256": official["sha256"], "authorization_sha256": official["authorization_sha256"],
-        "manifest_sha256": plan["official_manifest_sha256"],
-    }
     raw_hash = run.get("raw_manifest_sha256")
     source_end = None
     if raw_hash:
@@ -280,6 +390,8 @@ def _derive(folder, plan, official, run, catalog_digest):
         raw, source_end, sources = _checked_raw(raw_path, raw_hash, started, sealed)
         if raw["season"] != plan["season"]:
             raise ValueError("Raw snapshot season differs from capture plan")
+        if licensed:
+            _verify_license_capture(raw)
     if catalog_digest:
         if source_end is None:
             raise ValueError("Canonical archive requires a verified raw manifest")
@@ -309,7 +421,7 @@ def _derive(folder, plan, official, run, catalog_digest):
             reason = "LATE_START"
         elif lineage is not None:
             if not _same_game(calendar.get(game["game_id"]), game):
-                reason = "KICKOFF_CONFLICT"
+                reason = KICKOFF_CONFLICT if licensed else "KICKOFF_CONFLICT"
             elif not {game["away_team"], game["home_team"]} <= roster:
                 reason = "MISSING_WEEKLY_ROSTER"
             elif any(item["required"] and item["status"] != "OK" for item in sources):
@@ -337,7 +449,7 @@ def _derive(folder, plan, official, run, catalog_digest):
         key = f"{game['game_id']}@{game['cutoff_utc']}"
         receipts[key] = {
             **game, "status": "ELIGIBLE" if reason is None else "EXCLUDED", "reason": reason,
-            "kickoff_evidence": official_proof, "inputs": sources, "canonical": lineage,
+            "kickoff_evidence": _kickoff_proof(plan, evidence, game["game_id"]), "inputs": sources, "canonical": lineage,
             "build_available_at_utc": build_ready_at, "run_id": run["run_id"], "code": run["code"],
             "capture_started_at_utc": started.isoformat(),
             "capture_finished_at_utc": source_end.isoformat() if source_end else None,
@@ -362,16 +474,22 @@ def capture_window(plan_folder, output, *, authorized=False, for_actions=False, 
         raise ValueError("Explicit authorization for this capture is required")
     plan_folder = Path(plan_folder).resolve()
     output = _output(output, plan_folder)
-    plan, official = _load_plan(plan_folder)
-    if for_actions and official.get("public_redistribution_authorized") is not True:
+    plan, evidence = _load_plan(plan_folder)
+    licensed = plan.get("evidence_mode") == LICENSED
+    if for_actions and (licensed or evidence.get("public_redistribution_authorized") is not True):
         raise ValueError("Public archive redistribution is not authorized")
     started = utc(clock())
     if started < utc(plan["planned_at_utc"]):
         raise ValueError("Capture clock precedes the plan")
     deadline = min(utc(game["cutoff_utc"]) for game in plan["games"])
     output.mkdir(parents=True)
-    _copy_official(plan_folder / "official", output / "official")
+    if licensed:
+        shutil.copytree(plan_folder / "licensed", output / "licensed")
+    else:
+        _copy_files(plan_folder / "official", output / "official", OFFICIAL_FILES)
     shutil.copyfile(plan_folder / "plan.json", output / "plan.json")
+    if licensed:
+        plan, evidence = _load_plan(output)
     run = {"run_id": uuid4().hex, "started_at_utc": started.isoformat(), "code": code_identity()}
     if for_actions:
         run["github_run_id"] = os.environ.get("GITHUB_RUN_ID")
@@ -384,6 +502,8 @@ def capture_window(plan_folder, output, *, authorized=False, for_actions=False, 
             root = Path(work)
             manifest_path, _ = collect(plan["season"], root / "raw", SOURCES)
             manifest = _read(manifest_path)
+            if licensed:
+                _verify_license_capture(manifest)
             run["raw_manifest_sha256"] = sha256(manifest_path)
             if any(manifest["sources"].get(source, {}).get("status") != "OK" for source in REQUIRED):
                 run["failure"] = "REQUIRED_SOURCE_UNAVAILABLE"
@@ -399,7 +519,7 @@ def capture_window(plan_folder, output, *, authorized=False, for_actions=False, 
             if not digest:
                 shutil.copytree(manifest_path.parent, output / "excluded_raw")
     run["sealed_at_utc"] = utc(clock()).isoformat()
-    return _seal(output, plan, official, run, digest)
+    return _seal(output, plan, evidence, run, digest)
 
 
 def verify_bundle(folder, expected_index):
@@ -410,7 +530,8 @@ def verify_bundle(folder, expected_index):
     if sha256(folder / "index.json") != expected_index:
         raise ValueError("Independent index digest mismatch")
     index = _read(folder / "index.json")
-    plan, official = _load_plan(folder)
+    plan, evidence = _load_plan(folder)
+    licensed = plan.get("evidence_mode") == LICENSED
     digest = index["archive_catalog_sha256"]
     if (
         index["schema_version"] != VERSION or index["decision"] != "NO_BET"
@@ -419,16 +540,16 @@ def verify_bundle(folder, expected_index):
         or any(path.is_symlink() for path in folder.rglob("*"))
     ):
         raise ValueError("Pilot bundle provenance mismatch")
-    allowed = {"index.json", "plan.json", "official"} | ({"archive"} if digest else set())
+    allowed = {"index.json", "plan.json", "licensed" if licensed else "official"} | ({"archive"} if digest else set())
     if index["run"].get("raw_manifest_sha256") and not digest:
         allowed.add("excluded_raw")
-    if {path.name for path in folder.iterdir()} != allowed or {
-        path.name for path in (folder / "official").iterdir()
-    } != set(OFFICIAL_FILES):
+    if {path.name for path in folder.iterdir()} != allowed or (
+        not licensed and {path.name for path in (folder / "official").iterdir()} != set(OFFICIAL_FILES)
+    ):
         raise ValueError("Unexpected or missing bundle content")
     if digest:
         archive.verify(folder / "archive", digest)
-    if index["games"] != _derive(folder, plan, official, index["run"], digest):
+    if index["games"] != _derive(folder, plan, evidence, index["run"], digest):
         raise ValueError("Receipts differ from verified evidence")
     return index
 
@@ -442,12 +563,33 @@ def restore_bundle(folder, expected_index, destination):
     return index
 
 
+def _calendar_summary(index):
+    games = []
+    for receipt in index["games"].values():
+        proof = receipt["kickoff_evidence"]
+        if proof.get("kind") != LICENSED:
+            raise ValueError("Calendar summary requires NFLVERSE_LICENSED evidence")
+        if receipt["status"] != "ELIGIBLE":
+            continue
+        games.append({
+            **{key: receipt[key] for key in licensed_schedule.GAME_FIELDS},
+            "evidence": {key: proof[key] for key in (
+                "kind", "source_url", "source_version", "sha256", "received_at_utc", "license", "transformations",
+            )},
+        })
+    return {"games": games, "decision": "NO_BET"}
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     actions = parser.add_subparsers(dest="command", required=True)
     plan = actions.add_parser("plan")
     plan.add_argument("--catalog", required=True)
-    plan.add_argument("--official", required=True)
+    evidence = plan.add_mutually_exclusive_group(required=True)
+    evidence.add_argument("--official")
+    evidence.add_argument("--licensed", help="Use locally retained NFLVERSE_LICENSED calendar evidence")
+    plan.add_argument("--resolution", help="Independent authorized official evidence for a rescheduled game")
+    plan.add_argument("--supersedes", help="Previous immutable plan for a rescheduled game")
     plan.add_argument("--season", type=int, required=True)
     plan.add_argument("--week", type=int, required=True)
     plan.add_argument("--game", action="append", required=True)
@@ -464,17 +606,22 @@ def main(argv=None):
         action.add_argument("--expected-index", required=True)
         if name == "restore":
             action.add_argument("--output", required=True)
+        else:
+            action.add_argument("--calendar-summary", action="store_true", help="Emit only shareable calendar facts and attribution")
     args = parser.parse_args(argv)
     try:
         if args.command == "plan":
             result = plan_window(args.catalog, args.official, args.season, args.week, args.game,
-                                 args.output, args.lead_minutes)
+                                 args.output, args.lead_minutes, licensed_folder=args.licensed,
+                                 resolution=args.resolution, supersedes=args.supersedes)
         elif args.command == "capture":
             result, digest = capture_window(args.plan, args.output, authorized=args.authorized, for_actions=args.for_actions)
             result = {**result, "index_sha256": digest}
         else:
             result = (verify_bundle(args.folder, args.expected_index) if args.command == "verify"
                       else restore_bundle(args.folder, args.expected_index, args.output))
+            if args.command == "verify" and args.calendar_summary:
+                result = _calendar_summary(result)
         print(json.dumps(result, ensure_ascii=False))
         if args.command == "capture" and any(row["status"] != "ELIGIBLE" for row in result["games"].values()):
             return 2

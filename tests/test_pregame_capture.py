@@ -8,11 +8,13 @@ import unittest
 from unittest.mock import patch
 
 import duckdb
+import polars as pl
 
 import test_projection as fixtures
 from nfl_betting.backtesting import STRICT, backtest
 from nfl_betting.ingest_nflverse import SOURCES
-from nfl_betting.pregame_capture import capture_window, plan_window, restore_bundle, verify_bundle
+from nfl_betting import licensed_schedule
+from nfl_betting.pregame_capture import _calendar_summary, capture_window, plan_window, restore_bundle, verify_bundle
 from nfl_betting.provenance import sha256
 from nfl_betting.temporal_roster import utc
 
@@ -60,6 +62,8 @@ def _collected(season, output, sources, *, finish=END, published=None):
     items = {}
     for source in sources:
         url = f"https://github.com/nflverse/nflverse-data/releases/download/{source}/synthetic.parquet"
+        if source == "schedules":
+            url = licensed_schedule.SOURCE
         blob = raw / f"{source}.body"
         processed = raw / f"{source}.parquet"
         blob.write_bytes(b"Offline HTTP stand-in, not NFLverse data")
@@ -77,6 +81,42 @@ def _collected(season, output, sources, *, finish=END, published=None):
     _save(manifest, {"season": season, "run_id": raw.name, "started_at_utc": START,
                      "finished_at_utc": finish, "sources": items})
     return manifest, 0
+
+
+def _licensed(path, *, time_et="16:00", kickoff="2026-10-01T20:00:00Z"):
+    path.mkdir()
+    body = path / "source.parquet"
+    pl.DataFrame({
+        "season": [2026], "week": [6], "game_type": ["REG"], "game_id": ["target"],
+        "away_team": ["LAC"], "home_team": ["BAL"], "gameday": ["2026-10-01"],
+        "gametime": [time_et], "spread_line": [17], "away_moneyline": [404], "referee": ["third-party marker"],
+    }).write_parquet(body)
+    digest = sha256(body)
+    origin = path / "origin.json"
+    _save(origin, {
+        "season": 2026, "run_id": "synthetic-origin", "started_at_utc": "2026-10-01T16:55:00Z",
+        "finished_at_utc": "2026-10-01T17:10:00Z", "sources": {"schedules": {
+            "status": "OK", "resolved_download_url": licensed_schedule.SOURCE,
+            "started_at_utc": "2026-10-01T17:00:00Z", "finished_at_utc": "2026-10-01T17:08:00Z",
+            "http_responses": [{"status_code": 200, "requested_url": licensed_schedule.SOURCE,
+                                "received_at_utc": "2026-10-01T17:05:00Z", "sha256": digest}],
+        }},
+    })
+    retention = path / "retention.txt"
+    retention.write_text("SYNTHETIC OFFLINE RETENTION FIXTURE. NO REAL AUTHORIZATION.", encoding="utf-8")
+    _save(path / "manifest.json", {
+        "schema_version": 1, "season": 2026, "week": 6, "license": licensed_schedule.LICENSE,
+        "sha256": digest, "source_version": f"sha256:{digest}", "origin_sha256": sha256(origin),
+        "official_observations": [{
+            "game_id": "target", "kickoff_utc": kickoff, "source_url": "https://www.nfl.com/synthetic-calendar",
+            "reviewed_by": "fixture", "observed_at_utc": "2026-10-01T18:12:00Z", "published_at_utc": None,
+        }],
+        "local_retention": {
+            "scope": "LOCAL_PILOT_RAW_ARCHIVE", "sha256": sha256(retention), "basis_reference": "SYNTHETIC",
+            "reviewed_by": "fixture", "reviewed_at_utc": "2026-10-01T17:11:00Z",
+        },
+    })
+    return path
 
 
 def _built(snapshot, output, *, shifted_kickoff=None, build_delay=5):
@@ -135,6 +175,140 @@ class PregamePilotTests(unittest.TestCase):
                     plan, folder, authorized=True, for_actions=for_actions, clock=lambda: next(clock_times)
                 )
         return folder, index, digest, loader.call_count, builder.call_count
+
+    def licensed_plan(self, evidence, name="licensed-plan", **kwargs):
+        output = self.root / name
+        plan_window(self.reference, None, 2026, 6, ["target"], output, lead_minutes=60,
+                    licensed_folder=evidence, clock=lambda: utc("2026-10-01T18:15:00Z"), **kwargs)
+        return output
+
+    def test_licensed_receipts_projection_of_fields_and_offline_restore(self):
+        plan = self.licensed_plan(_licensed(self.root / "licensed-input"))
+        with patch("nfl_betting.pregame_capture.collect") as loader:
+            with self.assertRaisesRegex(ValueError, "Public archive"):
+                capture_window(plan, self.root / "public", authorized=True, for_actions=True)
+            loader.assert_not_called()
+        folder, index, digest, *_ = self.sealed(plan, "licensed-bundle")
+        receipt, = index["games"].values()
+        self.assertEqual((receipt["status"], receipt["decision"]), ("ELIGIBLE", "NO_BET"))
+        self.assertEqual(receipt["kickoff_evidence"]["kind"], licensed_schedule.MODE)
+        self.assertEqual(receipt["kickoff_evidence"]["published_at_utc"], None)
+        self.assertEqual(receipt["kickoff_evidence"]["official_observation"]["reviewed_by"], "fixture")
+        self.assertEqual(verify_bundle(folder, digest), index)
+        summary = _calendar_summary(index)
+        self.assertEqual(set(summary["games"][0]), {*licensed_schedule.GAME_FIELDS, "evidence"})
+        self.assertEqual(summary["games"][0]["evidence"]["license"], licensed_schedule.LICENSE)
+        for marker in ("moneyline", "spread_line", "third-party marker", "nfl.com/synthetic", "retention.txt"):
+            self.assertNotIn(marker, json.dumps(summary))
+        restored = self.root / "licensed-backup"
+        self.assertEqual(restore_bundle(folder, digest, restored), index)
+        (folder / "licensed/source.parquet").write_bytes(b"altered")
+        with self.assertRaisesRegex(ValueError, "SHA-256"):
+            verify_bundle(folder, digest)
+        self.assertEqual(verify_bundle(restored, digest), index)
+        labels = self.root / "licensed-labels"
+        fixtures._catalog(labels, label=7)
+        report = backtest(STRICT, 2026, "2026-10-03T00:00:00Z", [], [labels], weeks=[6],
+                          lead_minutes=60, pilot_archives=[(restored, digest)])
+        self.assertTrue(report["projections"])
+
+    def test_licensed_license_hash_and_temporal_validation(self):
+        evidence = _licensed(self.root / "licensed-input")
+        path = evidence / "manifest.json"
+        good = path.read_text()
+        for key, value, message in (
+            ("license.id", "MIT", "LICENSE_SCOPE_UNVERIFIED"),
+            ("license.attribution", ["NFLverse"], "attribution"),
+            ("license.declaration_url", "https://example.org/license", "LICENSE_SCOPE_UNVERIFIED"),
+            ("local_retention.scope", "UNKNOWN", "local raw retention"),
+            ("local_retention.reviewed_at_utc", "2026-10-01T18:21:00Z", "planning clock"),
+            ("sha256", "0" * 64, "SHA-256"),
+            ("source_version", "mutable-tag-only", "version mismatch"),
+            ("origin_sha256", "0" * 64, "SHA-256"),
+        ):
+            with self.subTest(field=key):
+                manifest = json.loads(good)
+                fields = key.split(".")
+                target = manifest if len(fields) == 1 else manifest[fields[0]]
+                target[fields[-1]] = value
+                _save(path, manifest)
+                with self.assertRaisesRegex(ValueError, message):
+                    self.licensed_plan(evidence)
+        manifest = json.loads(good)
+        origin = evidence / "origin.json"
+        raw = json.loads(origin.read_text())
+        raw["sources"]["schedules"]["http_responses"][0]["received_at_utc"] = "2026-10-01T17:09:00Z"
+        _save(origin, raw)
+        manifest["origin_sha256"] = sha256(origin)
+        _save(path, manifest)
+        with self.assertRaisesRegex(ValueError, "capture chronology"):
+            self.licensed_plan(evidence)
+
+    def test_licensed_rejects_unverified_and_future_observation_and_build_conflict(self):
+        bad = _licensed(self.root / "conflict", kickoff="2026-10-01T21:00:00Z")
+        with self.assertRaisesRegex(ValueError, "KICKOFF_CONFLICT_OR_UNVERIFIED"):
+            self.licensed_plan(bad)
+        evidence = _licensed(self.root / "good")
+        source = evidence / "manifest.json"
+        manifest = json.loads(source.read_text())
+        manifest["official_observations"][0]["observed_at_utc"] = "2026-10-01T19:01:00Z"
+        _save(source, manifest)
+        with self.assertRaisesRegex(ValueError, "KICKOFF_CONFLICT_OR_UNVERIFIED"):
+            self.licensed_plan(evidence)
+        plan = self.licensed_plan(_licensed(self.root / "without-conflict"))
+        _, index, *_ = self.sealed(plan, "shifted", shift="2026-10-01T21:00:00Z")
+        self.assertEqual(next(iter(index["games"].values()))["reason"], "KICKOFF_CONFLICT_OR_UNVERIFIED")
+        folder, index, digest, *_ = self.sealed(plan, "late", finish="2026-10-01T19:01:00Z", seal="2026-10-01T19:03:00Z")
+        self.assertEqual(next(iter(index["games"].values()))["reason"], "LATE_CAPTURE")
+        self.assertEqual(verify_bundle(folder, digest), index)
+        self.assertEqual(_calendar_summary(index), {"games": [], "decision": "NO_BET"})
+
+    def test_licensed_rejects_changed_download_before_archiving(self):
+        plan = self.licensed_plan(_licensed(self.root / "approved"))
+
+        def changed_release(*args):
+            path, status = _collected(*args)
+            raw = json.loads(path.read_text())
+            raw["sources"]["schedules"]["resolved_download_url"] += ".changed"
+            _save(path, raw)
+            return path, status
+
+        with patch("nfl_betting.pregame_capture.collect", side_effect=changed_release):
+            with patch("nfl_betting.pregame_capture.build") as builder:
+                with self.assertRaisesRegex(ValueError, "LICENSE_SCOPE_UNVERIFIED"):
+                    capture_window(plan, self.root / "out-of-scope", authorized=True, clock=lambda: utc(START))
+                builder.assert_not_called()
+        self.assertFalse((self.root / "out-of-scope/archive").exists())
+
+    def test_licensed_reschedule_requires_independent_timely_evidence_and_new_plan(self):
+        first = self.prepare()
+        initial_digest = sha256(first / "plan.json")
+        new = "2026-10-01T21:00:00Z"
+        licensed = _licensed(self.root / "revised-calendar", time_et="17:00", kickoff=new)
+        proof = _official(self.root / "resolution", new)
+        entry = proof / "manifest.json"
+        manifest = json.loads(entry.read_text())
+        manifest["available_at_utc"] = "2026-10-01T18:19:00Z"
+        manifest["supersedes_plan_sha256"] = initial_digest
+        _save(entry, manifest)
+        with self.assertRaisesRegex(ValueError, "KICKOFF_CONFLICT_OR_UNVERIFIED"):
+            self.licensed_plan(licensed)
+        with self.assertRaisesRegex(ValueError, "invalid reschedule"):
+            self.licensed_plan(licensed, resolution=proof, supersedes=first)
+        new_plan = self.root / "resolved-plan"
+        plan = plan_window(self.reference, None, 2026, 6, ["target"], new_plan, 60,
+                           licensed_folder=licensed, resolution=proof, supersedes=first,
+                           clock=lambda: utc("2026-10-01T18:19:00Z"))
+        self.assertEqual(plan["games"][0]["cutoff_utc"], "2026-10-01T20:00:00+00:00")
+        self.assertEqual(plan["reschedule"]["supersedes_plan_sha256"], initial_digest)
+        self.assertEqual(sha256(first / "plan.json"), initial_digest)
+        folder, index, digest, *_ = self.sealed(new_plan, "rescheduled", shift=new)
+        self.assertEqual(next(iter(index["games"].values()))["status"], "ELIGIBLE")
+        self.assertEqual(verify_bundle(folder, digest), index)
+        prior = folder / "licensed/previous-plan.json"
+        prior.write_bytes(prior.read_bytes() + b"\n")
+        with self.assertRaisesRegex(ValueError, "invalid reschedule evidence"):
+            verify_bundle(folder, digest)
 
     def test_eligible_before_cutoff_and_offline_restore_without_overwrite(self):
         plan = self.prepare()

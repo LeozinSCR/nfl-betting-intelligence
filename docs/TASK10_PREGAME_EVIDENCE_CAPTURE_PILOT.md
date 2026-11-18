@@ -3,7 +3,7 @@
 `nfl_betting.pregame_capture` planeja uma janela de até 30 minutos de
 diferença entre kickoffs. O cutoff padrão é K−135 minutos. O planejador lê
 um catálogo canônico existente e compara IDs, times e horário com uma
-evidência oficial já capturada, revisada e autorizada. A segunda conferência
+evidência selecionada em `plan --official` ou `plan --licensed`. A segunda conferência
 usa o calendário do novo build. Divergências conhecidas bloqueiam o plano
 ou excluem o jogo no recibo. Um kickoff remarcado requer nova verificação
 do calendário e novo plano.
@@ -30,7 +30,142 @@ transcrição do calendário e o significado da autorização dependem da
 revisão humana. A coleta automática usa exclusivamente o coletor NFLverse
 já existente. Inativos e titularidade permanecem sem verificação oficial.
 
-## Um único piloto real, local e R$ 0 adicional
+## Calendário NFLverse licenciado para uso local
+
+`plan --licensed` seleciona `NFLVERSE_LICENSED`. O
+[ativo `games.parquet` da release `schedules`](https://github.com/nflverse/nflverse-data/releases/tag/schedules)
+segue a [declaração CC BY 4.0 do NFLverse](https://github.com/nflverse#licensing)
+e a [licença vinculada à tag](https://github.com/nflverse/nflverse-data/blob/ab1331c85fd222ce953fe61363b099c0629de0a1/LICENSE.md).
+Credite NFLverse e Lee Sharpe. A URL é mutável. A versão identifica os bytes
+originais do HTTP 200 por `sha256:<digest>` e pelo manifesto de captura,
+com horários UTC observados. Last-Modified e a data da release ficam
+distintos da publicação comprovada de uma versão específica.
+
+O [upstream `nfldata`](https://github.com/nflverse/nfldata) carece de licença
+própria identificada, e o parquet inclui linhas e odds. Antes de copiar
+bytes, revise a base que permite retenção local do arquivo integral e dos
+brutos do piloto, incluindo as versões coletadas no dia e uma cópia offline
+privada. Em caso de dúvida sobre o escopo, interrompa. Documente a base real
+em `retention.txt` (UTF-8) com referência verificável. O operador revisa os
+direitos. O código valida o vínculo e a integridade da evidência. Use um
+diretório privado fora de pastas sincronizadas.
+
+A conferência humana registra URL, responsável, kickoff observado e horário
+da observação. Preencha o horário de publicação só quando verificável.
+Quando somente a data for conhecida, use `null`. A consulta segue os
+[termos da NFL](https://www.nfl.com/legal/terms/). O modo licenciado arquiva
+essa observação factual, sem copiar HTML, PDF ou imagens da NFL.
+
+### Preparação em PowerShell
+
+Execute da raiz do projeto, depois de confirmar a base de retenção. Use o
+manifesto original e o corpo HTTP de um snapshot já preservado. O parquet
+transformado pelo coletor tem outro hash. Confira o calendário oficial
+imediatamente antes de preencher os dados da observação.
+
+```powershell
+$raw = Read-Host 'Diretório privado do snapshot bruto existente'
+$rights = Read-Host 'Caminho do retention.txt revisado'
+$basis = Read-Host 'Referência verificável da base de retenção'
+$reviewer = Read-Host 'Nome do revisor'
+$rightsReviewed = [DateTimeOffset]::UtcNow.ToString('o')
+$officialUrl = Read-Host 'URL NFL consultada para IND @ HOU'
+$observedKickoff = Read-Host 'Kickoff observado, em ISO 8601 com offset'
+$observedAt = [DateTimeOffset]::UtcNow.ToString('o')
+
+$origin = Join-Path $raw 'manifest.json'
+$schedule = (Get-Content -LiteralPath $origin -Raw | ConvertFrom-Json).sources.schedules
+$bodies = @($schedule.http_responses | Where-Object { $_.status_code -eq 200 })
+if ($bodies.Count -ne 1) { throw 'Esperado um corpo HTTP 200 de schedules.' }
+$body = Join-Path $raw $bodies[0].path
+$digest = (Get-FileHash -LiteralPath $body -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($digest -ne $bodies[0].sha256) { throw 'SHA-256 do corpo divergente.' }
+$inputDir = Join-Path $env:LOCALAPPDATA 'NFL-Pregame\2026-11-IND-HOU\licensed-input'
+if (Test-Path -LiteralPath $inputDir) { throw 'Escolha uma nova pasta de evidência.' }
+New-Item -ItemType Directory -Path $inputDir -ErrorAction Stop | Out-Null
+Copy-Item -LiteralPath $body -Destination (Join-Path $inputDir 'source.parquet')
+Copy-Item -LiteralPath $origin -Destination (Join-Path $inputDir 'origin.json')
+Copy-Item -LiteralPath $rights -Destination (Join-Path $inputDir 'retention.txt')
+$manifest = @{
+    schema_version = 1
+    season = 2026
+    week = 11
+    sha256 = $digest
+    source_version = "sha256:$digest"
+    origin_sha256 = (Get-FileHash -LiteralPath $origin -Algorithm SHA256).Hash.ToLowerInvariant()
+    license = @{
+        id = 'CC-BY-4.0'
+        url = 'https://creativecommons.org/licenses/by/4.0/'
+        declaration_url = 'https://github.com/nflverse/nflverse-data/blob/ab1331c85fd222ce953fe61363b099c0629de0a1/LICENSE.md'
+        attribution = @('NFLverse', 'Lee Sharpe')
+    }
+    local_retention = @{
+        scope = 'LOCAL_PILOT_RAW_ARCHIVE'
+        basis_reference = $basis
+        reviewed_by = $reviewer
+        reviewed_at_utc = $rightsReviewed
+        sha256 = (Get-FileHash -LiteralPath $rights -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    official_observations = @(@{
+        game_id = '2026_11_IND_HOU'
+        source_url = $officialUrl
+        reviewed_by = $reviewer
+        kickoff_utc = $observedKickoff
+        observed_at_utc = $observedAt
+        published_at_utc = $null
+    })
+}
+$manifest | ConvertTo-Json -Depth 6 | Set-Content -Encoding UTF8 -LiteralPath (Join-Path $inputDir 'manifest.json')
+```
+
+### Execução local e cópia
+
+Reconfirme o kickoff no dia. Se IND @ HOU continuar em **19/11/2026 às
+22h15 de São Paulo**, conclua captura, build e selo até **20h00 (23h00 UTC)**.
+Use os comandos a seguir após autorização explícita para uma execução.
+Mantenha o relógio sincronizado.
+
+```powershell
+$ref = Read-Host 'Diretório do build canônico existente verificado'
+$root = Split-Path -Parent $inputDir
+$plan = Join-Path $root 'plan-licensed'
+$bundle = Join-Path $root 'bundle-licensed-private'
+$offline = Join-Path 'C:\Users\leona\Documents' 'NFL-Pregame-Offline\2026-11-IND-HOU-licensed'
+.\.venv\Scripts\python.exe -B -m nfl_betting.pregame_capture plan --catalog $ref --licensed $inputDir --season 2026 --week 11 --game 2026_11_IND_HOU --lead-minutes 135 --output $plan
+if ($LASTEXITCODE -ne 0) { throw 'Plano recusado.' }
+$receipt = .\.venv\Scripts\python.exe -B -m nfl_betting.pregame_capture capture --plan $plan --output $bundle --authorized
+$captureStatus = $LASTEXITCODE
+$receipt
+if ($captureStatus -ne 0) { throw 'Captura recusada. Preserve o diagnóstico privado.' }
+$indexDigest = ($receipt | ConvertFrom-Json).index_sha256
+# Guarde esse digest original em um registro separado da cópia.
+.\.venv\Scripts\python.exe -B -m nfl_betting.pregame_capture verify --folder $bundle --expected-index $indexDigest
+if ($LASTEXITCODE -ne 0) { throw 'Verificação recusada.' }
+New-Item -ItemType Directory -Path (Split-Path -Parent $offline) -Force | Out-Null
+.\.venv\Scripts\python.exe -B -m nfl_betting.pregame_capture restore --folder $bundle --expected-index $indexDigest --output $offline
+if ($LASTEXITCODE -ne 0) { throw 'Restauração recusada.' }
+```
+
+O plano e o bundle completos são privados. `verify --calendar-summary`
+emite apenas `game_id`, equipes, kickoff dos jogos elegíveis e metadados de
+fonte, hora de captura, hash, licença, atribuição e transformações. Use esse
+JSON para compartilhamento conforme a licença. Preserve o bundle privado
+para restauração offline e `STRICT_AS_OF`. O modo licenciado é recusado em
+`capture --for-actions`.
+
+### Remanejamentos
+
+Qualquer divergência resulta em `KICKOFF_CONFLICT_OR_UNVERIFIED`. Para
+remanejar um jogo, use novo calendário licenciado, nova observação humana
+e `--resolution` com evidência independente no formato oficial autorizado.
+Seu manifesto inclui `supersedes_plan_sha256`, o hash do `plan.json`
+anterior, cujo diretório entra por `--supersedes`. A resolução deve estar
+disponível após o plano anterior e até o novo, que deve preceder o kickoff
+antigo e respeitar o cutoff recalculado. A referência pode conter o kickoff
+antigo quando coincidir com o plano anterior. O novo build precisa
+confirmar o horário revisado. Use novos destinos para plano e captura.
+
+## Um único piloto no modo oficial autorizado
 
 Após autorização específica do operador, use o ambiente já instalado,
 espere a janela de trabalho e confirme o calendário oficial imediatamente
