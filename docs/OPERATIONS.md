@@ -25,6 +25,19 @@ A CLI aceita as seis fontes documentadas. Cada execução usa timestamp com micr
 
 A retenção de Actions **não é arquivo permanente**. Transferência para armazenamento durável e catálogo de snapshots ainda são pendências. Falhas graves anteriores ao checkout/Python, cancelamento forçado ou indisponibilidade do próprio GitHub podem impedir o diagnóstico dentro do job; verificar a execução no GitHub.
 
+O [piloto V1.7](TASK10_PREGAME_EVIDENCE_CAPTURE_PILOT.md) acrescenta
+planejamento e recibos por jogo, restauração offline e consumo certificado
+no `STRICT_AS_OF`. O workflow separado usa disparo manual. A execução local
+é o padrão enquanto armazenamento gratuito e redistribuição não estiverem
+confirmados.
+
+O modo local `NFLVERSE_LICENSED` usa a release versionada de calendário
+NFLverse e registra a conferência humana à parte. Siga o [PowerShell do
+piloto licenciado](TASK10_PREGAME_EVIDENCE_CAPTURE_PILOT.md#calendário-nflverse-licenciado-para-uso-local)
+após verificar a base de retenção integral dos brutos. Guarde o plano e o
+bundle fora de pastas sincronizadas. Para compartilhar somente os fatos
+licenciados do calendário, use `verify --calendar-summary`.
+
 ## Reproduzir falha de ingestão sem rede
 
 A suíte `test_ingestion.py` injeta loaders com erro de rede/import, tabela vazia, schema inválido, ano errado e falha de escrita. Demonstra que um êxito parcial continua disponível e o exit é 2. `test_no_manifest_setup_or_test_failure_is_auditable` cobre a ausência do próprio manifesto. Para inspecionar manualmente uma dessas falhas sintéticas (fora dos históricos):

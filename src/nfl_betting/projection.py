@@ -293,7 +293,8 @@ def _game_roster(roster, teams):
     return candidates, excluded
 
 
-def _fold(catalog, season, week, cutoff, captures, *, game_ids=None, frozen_histories=None):
+def _fold(catalog, season, week, cutoff, captures, *, game_ids=None, frozen_histories=None,
+          verified_targets=None):
     snapshot = catalog.manifest["source_snapshot_id"]
     with _connect(catalog.folder) as con:
         if frozen_histories is None:
@@ -311,8 +312,8 @@ def _fold(catalog, season, week, cutoff, captures, *, game_ids=None, frozen_hist
         if game_ids is not None and game_id not in game_ids:
             continue
         teams = (game["away_team"], game["home_team"])
-        schedule = None
-        if game_id in revisions:
+        schedule = (verified_targets or {}).get(game_id)
+        if schedule is None and game_id in revisions:
             game["kickoff_utc"], schedule = revisions[game_id]
             if not schedule or teams != KICKOFF_TEAMS[game_id]:
                 game["kickoff_conflict"] = True

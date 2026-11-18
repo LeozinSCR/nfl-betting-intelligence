@@ -286,7 +286,48 @@ def _paired_rows(projections, labels, phases, exclusions):
     return paired, games_with_label
 
 
-def backtest(mode, season, as_of, feature_folders, label_folders, evidence_paths=(), weeks=range(1, 19), lead_minutes=60):
+def _pilot_features(specifications, season, as_of, lead):
+    from .pregame_capture import verify_bundle
+
+    sources, receipts, evidence = [], {}, []
+    for path, digest in specifications:
+        folder = Path(path).resolve()
+        index = verify_bundle(folder, digest)
+        if index["season"] != season:
+            raise ValueError("Pilot season differs from backtest season")
+        catalog = folder / "archive/canonical"
+        for receipt in index["games"].values():
+            if receipt["status"] != "ELIGIBLE" or utc(receipt["sealed_at_utc"]) > as_of:
+                continue
+            if utc(receipt["kickoff_utc"]) - utc(receipt["cutoff_utc"]) != lead:
+                raise ValueError("Pilot receipt and backtest cutoff policies differ")
+            key = catalog, receipt["game_id"]
+            receipts[key] = receipt
+        if any(key[0] == catalog for key in receipts):
+            sources.append(catalog)
+        evidence.append({"index_sha256": digest, "run_id": index["run"]["run_id"]})
+    return list(dict.fromkeys(sources)), receipts, evidence
+
+
+def _pilot_plan(versions, receipts, audit_at):
+    admissible = [
+        (utc(receipt["cutoff_utc"]), catalog, game, utc(receipt["kickoff_utc"]), receipt["kickoff_evidence"])
+        for catalog, game in versions
+        if (receipt := receipts.get((catalog.folder, game["game_id"]))) is not None
+        and game["kickoff_utc"] is not None and utc(game["kickoff_utc"]) == utc(receipt["kickoff_utc"])
+        and game["has_result"] is False
+    ]
+    if not admissible:
+        return None, "PILOT_RECEIPT_UNAVAILABLE"
+    if len({item[3] for item in admissible}) != 1:
+        return None, "PILOT_KICKOFF_CONFLICT"
+    if admissible[0][3] > audit_at:
+        return None, "GAME_NOT_STARTED_AT_AUDIT"
+    return max(admissible, key=lambda item: (item[1].available_at, item[1].manifest_hash)), None
+
+
+def backtest(mode, season, as_of, feature_folders, label_folders, evidence_paths=(), weeks=range(1, 19),
+             lead_minutes=60, *, pilot_archives=()):
     if mode not in {STRICT, RETROSPECTIVE} or not 1 <= lead_minutes <= 7 * 24 * 60:
         raise ValueError("Specify a supported mode and an appropriate positive lead")
     as_of = utc(as_of)
@@ -294,6 +335,11 @@ def backtest(mode, season, as_of, feature_folders, label_folders, evidence_paths
     if not weeks or not weeks <= set(range(1, 19)):
         raise ValueError("Select regular-season weeks 1..18")
     lead = timedelta(minutes=lead_minutes)
+    pilot_receipts, pilot_evidence = {}, []
+    if pilot_archives:
+        if mode != STRICT or feature_folders:
+            raise ValueError("Pilot archives require strict mode and cannot mix with legacy feature inputs")
+        feature_folders, pilot_receipts, pilot_evidence = _pilot_features(pilot_archives, season, as_of, lead)
     features = [c for p in feature_folders if (c := read_catalog(p, season)).available_at <= as_of]
     labels = [c for p in label_folders if (c := read_catalog(p, season)).available_at <= as_of]
     captures = load_evidence(evidence_paths, season, as_of)
@@ -334,7 +380,10 @@ def backtest(mode, season, as_of, feature_folders, label_folders, evidence_paths
         }
         game_inventory[game_id] = entry
         if mode == STRICT:
-            plan, reason = _strict_plan(versions[game_id], corrections, lead, as_of)
+            if pilot_archives:
+                plan, reason = _pilot_plan(versions[game_id], pilot_receipts, as_of)
+            else:
+                plan, reason = _strict_plan(versions[game_id], corrections, lead, as_of)
             if plan and plan[3] > as_of:
                 plan, reason = None, "GAME_NOT_STARTED_AT_AUDIT"
             elif not plan and nominal is not None and utc(nominal) > as_of:
@@ -392,6 +441,8 @@ def backtest(mode, season, as_of, feature_folders, label_folders, evidence_paths
         entry.update(phase=phases[entry["game_date_et"]], cutoff_utc=cutoff.isoformat(),
                      kickoff_utc=kickoff.isoformat(), selected_snapshot_id=catalog.manifest["source_snapshot_id"],
                      kickoff_evidence=schedule)
+        if pilot_archives:
+            entry["pilot_receipt"] = pilot_receipts[catalog.folder, game_id]
         if mode == STRICT:
             strict_batches[catalog.folder, game["week"], cutoff, entry["phase"]].add(game_id)
             continue
@@ -422,6 +473,9 @@ def backtest(mode, season, as_of, feature_folders, label_folders, evidence_paths
         rows, details = _fold(
             catalog, season, week, cutoff, load_evidence(evidence_paths, season, cutoff),
             game_ids=game_ids, frozen_histories=frozen if phase == "test" else None,
+            verified_targets={
+                game_id: pilot_receipts[folder, game_id]["kickoff_evidence"] for game_id in game_ids
+            } if pilot_archives else None,
         )
         projections.extend(rows)
         for result in details["games"]:
@@ -462,6 +516,7 @@ def backtest(mode, season, as_of, feature_folders, label_folders, evidence_paths
             "min_calibration_dates": MIN_CALIBRATION_DATES, "paired_bootstrap_replicates": BOOTSTRAP_REPLICATES,
         },
         "code": code_identity(), "snapshots": list(inventory.values()),
+        "pilot_archives": pilot_evidence,
         "supplemental_evidence": [source for source, _ in captures],
         "fold_dates": splits, "test_frozen_at_utc": test_freeze.isoformat() if test_freeze else None,
         "test_history_catalog": frozen_catalog.lineage if frozen_catalog else None,
@@ -532,7 +587,9 @@ def main(argv=None):
     parser.add_argument("--mode", choices=(STRICT, RETROSPECTIVE), required=True)
     parser.add_argument("--season", type=int, required=True)
     parser.add_argument("--as-of", required=True)
-    parser.add_argument("--features", type=Path, action="append", required=True)
+    features = parser.add_mutually_exclusive_group(required=True)
+    features.add_argument("--features", type=Path, action="append", default=[])
+    features.add_argument("--pilot", action="append", nargs=2, default=[], metavar=("FOLDER", "INDEX_SHA256"))
     parser.add_argument("--labels", type=Path, action="append", required=True)
     parser.add_argument("--evidence", type=Path, action="append", default=[])
     parser.add_argument("--week", type=int, action="append")
@@ -547,12 +604,13 @@ def main(argv=None):
         repo = Path(__file__).resolve().parents[2]
         protected = [repo / name for name in ("data", "legacy", "web/public")]
         protected.extend(path.resolve() for path in (*args.features, *args.labels, *args.evidence))
+        protected.extend(Path(path).resolve() for path, _ in args.pilot)
         if any(output.is_relative_to(path) for path in protected):
             raise ValueError("Output must be outside catalogs, evidence and historical datasets")
         if output.exists():
             raise FileExistsError(output)
         report = backtest(args.mode, args.season, audit_at, args.features, args.labels, args.evidence,
-                          args.week or range(1, 19), args.lead_minutes)
+                          args.week or range(1, 19), args.lead_minutes, pilot_archives=args.pilot)
         payload = json.dumps(report, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
         output.mkdir(parents=True)
         (output / "report.json").write_text(payload + "\n", encoding="utf-8")
